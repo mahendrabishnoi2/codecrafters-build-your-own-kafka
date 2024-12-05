@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"net"
 	"os"
 )
@@ -23,12 +22,13 @@ func main() {
 	}
 	defer conn.Close()
 
-	data, err := io.ReadAll(conn)
+	buffer := make([]byte, 1024)
+	_, err = conn.Read(buffer)
 	if err != nil {
 		fmt.Println("Error reading data: ", err.Error())
 		os.Exit(1)
 	}
-	fmt.Println("Received data: ", string(data))
+	fmt.Println("Received data: ", string(buffer))
 
 	dataToWrite := []byte{0, 0, 0, 0, 0, 0, 0, 7}
 	_, err = conn.Write(dataToWrite)
