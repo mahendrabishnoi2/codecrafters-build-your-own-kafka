@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"os"
 )
@@ -19,9 +20,23 @@ func main() {
 		fmt.Println("Failed to bind to port 9092")
 		os.Exit(1)
 	}
-	_, err = l.Accept()
+	conn, err := l.Accept()
 	if err != nil {
 		fmt.Println("Error accepting connection: ", err.Error())
+		os.Exit(1)
+	}
+
+	data, err := io.ReadAll(conn)
+	if err != nil {
+		fmt.Println("Error reading data: ", err.Error())
+		os.Exit(1)
+	}
+	fmt.Println("Received data: ", string(data))
+
+	dataToWrite := []byte("100\n7")
+	_, err = conn.Write(dataToWrite)
+	if err != nil {
+		fmt.Println("Error writing data: ", err.Error())
 		os.Exit(1)
 	}
 }
