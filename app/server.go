@@ -25,6 +25,7 @@ func main() {
 		fmt.Println("Error accepting connection: ", err.Error())
 		os.Exit(1)
 	}
+	defer conn.Close()
 
 	data, err := io.ReadAll(conn)
 	if err != nil {
@@ -39,4 +40,5 @@ func main() {
 		fmt.Println("Error writing data: ", err.Error())
 		os.Exit(1)
 	}
+	fmt.Println("Sent data: ", string(dataToWrite))
 }
