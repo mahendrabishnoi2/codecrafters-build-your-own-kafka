@@ -34,11 +34,11 @@ func main() {
 	}
 	fmt.Println("Received data: ", string(data))
 
-	dataToWrite := []byte("100\n7")
+	dataToWrite := []byte{0, 0, 0, 0, 0, 0, 0, 7}
 	_, err = conn.Write(dataToWrite)
 	if err != nil {
 		fmt.Println("Error writing data: ", err.Error())
 		os.Exit(1)
 	}
-	fmt.Println("Sent data: ", string(dataToWrite))
+	fmt.Println("Sent data: ", dataToWrite)
 }
