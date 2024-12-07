@@ -50,5 +50,5 @@ func main() {
 		fmt.Println("Error writing data: ", err.Error())
 		os.Exit(1)
 	}
-	fmt.Println("Sent data: ", dataToWrite)
+	// fmt.Println("Sent data: ", dataToWrite)
 }
