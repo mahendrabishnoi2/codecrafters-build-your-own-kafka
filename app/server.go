@@ -29,11 +29,10 @@ func main() {
 		fmt.Println("Error reading data: ", err.Error())
 		os.Exit(1)
 	}
-	fmt.Println("Received data: ", string(buffer))
+	fmt.Println("Received data: ", buffer)
 
 	// get message size from the first 4 bytes
 	messageSizeBytes := buffer[:4]
-	_ = messageSizeBytes
 	buffer = buffer[4:]
 
 	requestApiKeyBytes := buffer[:4]
