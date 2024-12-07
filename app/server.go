@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"slices"
 )
 
 func main() {
@@ -31,22 +30,22 @@ func main() {
 	}
 	fmt.Println("Received data: ", buffer)
 
-	// get message size from the first 4 bytes
-	messageSizeBytes := buffer[:4]
-	buffer = buffer[4:]
-
-	requestApiKeyBytes := buffer[:4]
-	_ = requestApiKeyBytes
-	buffer = buffer[4:]
-
-	requestApiVersionBytes := buffer[:4]
-	_ = requestApiVersionBytes
-	buffer = buffer[4:]
-
-	correlationIdBytes := buffer[:8]
-
-	dataToWrite := slices.Concat(messageSizeBytes, correlationIdBytes)
-	_, err = conn.Write(dataToWrite)
+	// // get message size from the first 4 bytes
+	// messageSizeBytes := buffer[:4]
+	// buffer = buffer[4:]
+	//
+	// requestApiKeyBytes := buffer[:4]
+	// _ = requestApiKeyBytes
+	// buffer = buffer[4:]
+	//
+	// requestApiVersionBytes := buffer[:4]
+	// _ = requestApiVersionBytes
+	// buffer = buffer[4:]
+	//
+	// correlationIdBytes := buffer[:8]
+	//
+	// dataToWrite := slices.Concat(messageSizeBytes, correlationIdBytes)
+	_, err = conn.Write(buffer)
 	if err != nil {
 		fmt.Println("Error writing data: ", err.Error())
 		os.Exit(1)
