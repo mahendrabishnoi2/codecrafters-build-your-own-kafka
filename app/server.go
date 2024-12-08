@@ -30,10 +30,26 @@ func main() {
 	}
 	fmt.Printf("Received data: %v (%d)", buffer[4:8], int32(binary.BigEndian.Uint32(buffer[8:12])))
 
-	resp := make([]byte, 10)
-	copy(resp[0:4], buffer[4:8])
-	copy(resp[4:8], buffer[8:12])
-	binary.BigEndian.PutUint16(resp[8:10], 35)
+	resp := make([]byte, 18)
+	// message size
+	binary.BigEndian.PutUint32(resp[0:4], 18)
+	copy(resp[4:8], buffer[8:12]) // correlation id
+
+	// API Versions Response Body
+	// error code
+	binary.BigEndian.PutUint16(resp[8:10], 0)
+
+	// API Versions array
+	// length of array = 1 byte
+	resp[10] = 0x01
+
+	// element 1
+	// api key (2 bytes), min version (2 bytes), max version (2 bytes), tag buffer (0x00) (1 byte)
+	binary.BigEndian.PutUint16(resp[11:13], 18) // api key
+	binary.BigEndian.PutUint16(resp[13:15], 0)  // min version
+	binary.BigEndian.PutUint16(resp[15:17], 5)  // max version
+	resp[17] = 0x00
+
 	_, err = conn.Write(resp)
 	if err != nil {
 		fmt.Println("Error writing data: ", err.Error())
