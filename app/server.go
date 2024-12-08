@@ -32,7 +32,7 @@ func main() {
 
 	resp := make([]byte, 18)
 	// message size
-	binary.BigEndian.PutUint32(resp[0:4], 18)
+	binary.BigEndian.PutUint32(resp[0:4], 12)
 	copy(resp[4:8], buffer[8:12]) // correlation id
 
 	// API Versions Response Body
