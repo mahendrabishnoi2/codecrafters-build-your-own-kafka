@@ -31,7 +31,7 @@ func main() {
 	}
 	fmt.Printf("Received data: %v (%d)", buffer[4:8], int32(binary.BigEndian.Uint32(buffer[8:12])))
 
-	resp := make([]byte, 8)
+	resp := make([]byte, 10)
 	copy(resp[0:4], buffer[4:8])
 	copy(resp[4:8], buffer[8:12])
 	binary.BigEndian.PutUint16(resp[12:14], 35)
