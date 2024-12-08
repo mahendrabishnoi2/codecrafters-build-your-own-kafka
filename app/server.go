@@ -8,7 +8,6 @@ import (
 )
 
 func main() {
-	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
 
 	l, err := net.Listen("tcp", "0.0.0.0:9092")
@@ -34,11 +33,11 @@ func main() {
 	resp := make([]byte, 10)
 	copy(resp[0:4], buffer[4:8])
 	copy(resp[4:8], buffer[8:12])
-	binary.BigEndian.PutUint16(resp[12:14], 35)
+	binary.BigEndian.PutUint16(resp[8:10], 35)
 	_, err = conn.Write(resp)
 	if err != nil {
 		fmt.Println("Error writing data: ", err.Error())
 		os.Exit(1)
 	}
-	fmt.Println("Response sent")
+	fmt.Println("Response sent", resp)
 }
