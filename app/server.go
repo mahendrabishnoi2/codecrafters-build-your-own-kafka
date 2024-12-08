@@ -41,7 +41,7 @@ func main() {
 
 	// API Versions array
 	// length of array = 1 byte
-	resp[10] = 0x01
+	resp[10] = 0x02
 
 	// element 1
 	// api key (2 bytes), min version (2 bytes), max version (2 bytes), tag buffer (0x00) (1 byte)
