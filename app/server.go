@@ -34,7 +34,7 @@ func main() {
 	resp := make([]byte, 8)
 	copy(resp[0:4], buffer[4:8])
 	copy(resp[4:8], buffer[8:12])
-	binary.BigEndian.PutUint16(resp[0:2], 35)
+	binary.BigEndian.PutUint16(resp[12:14], 35)
 	_, err = conn.Write(resp)
 	if err != nil {
 		fmt.Println("Error writing data: ", err.Error())
