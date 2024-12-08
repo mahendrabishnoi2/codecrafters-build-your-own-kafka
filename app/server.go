@@ -31,7 +31,7 @@ func main() {
 	}
 	fmt.Printf("Received data: %v (%d)", buffer[4:8], int32(binary.BigEndian.Uint32(buffer[8:12])))
 
-	resp := make([]byte, 18)
+	resp := make([]byte, 19)
 	// message size
 	binary.BigEndian.PutUint32(resp[0:4], 18)
 	copy(resp[4:8], buffer[8:12]) // correlation id
@@ -48,7 +48,7 @@ func main() {
 	// api key (2 bytes), min version (2 bytes), max version (2 bytes), tag buffer (0x00) (1 byte)
 	binary.BigEndian.PutUint16(resp[11:13], 18) // api key
 	binary.BigEndian.PutUint16(resp[13:15], 0)  // min version
-	binary.BigEndian.PutUint16(resp[15:16], 10) // max version
+	binary.BigEndian.PutUint16(resp[15:17], 10) // max version
 	resp[17] = 0x00
 	resp[18] = 0x00
 
