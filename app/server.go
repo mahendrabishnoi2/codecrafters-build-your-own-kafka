@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"os"
@@ -56,4 +57,6 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Println("Response sent", resp)
+
+	fmt.Println(hex.Dump(resp))
 }
