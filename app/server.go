@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"fmt"
 	"net"
 	"os"
@@ -28,27 +29,15 @@ func main() {
 		fmt.Println("Error reading data: ", err.Error())
 		os.Exit(1)
 	}
-	fmt.Println("Received data: ", buffer)
+	fmt.Printf("Received data: %v (%d)", buffer[4:8], int32(binary.BigEndian.Uint32(buffer[8:12])))
 
-	// // get message size from the first 4 bytes
-	// messageSizeBytes := buffer[:4]
-	// buffer = buffer[4:]
-	//
-	// requestApiKeyBytes := buffer[:4]
-	// _ = requestApiKeyBytes
-	// buffer = buffer[4:]
-	//
-	// requestApiVersionBytes := buffer[:4]
-	// _ = requestApiVersionBytes
-	// buffer = buffer[4:]
-	//
-	// correlationIdBytes := buffer[:8]
-	//
-	// dataToWrite := slices.Concat(messageSizeBytes, correlationIdBytes)
-	_, err = conn.Write(buffer)
+	resp := make([]byte, 8)
+	copy(resp[0:4], buffer[4:8])
+	copy(resp[4:8], buffer[8:12])
+	_, err = conn.Write(resp)
 	if err != nil {
 		fmt.Println("Error writing data: ", err.Error())
 		os.Exit(1)
 	}
-	// fmt.Println("Sent data: ", dataToWrite)
+	fmt.Println("Response sent")
 }
