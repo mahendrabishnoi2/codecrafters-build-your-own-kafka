@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -373,14 +372,13 @@ func Read(conn net.Conn) (*Message, error) {
 		msg.RequestBody = reqBody
 	}
 
-	time.Sleep(1 * time.Second)
 	fmt.Printf("Request 5: %+v\n", msg)
 
 	return &msg, nil
 }
 
 func Send(conn net.Conn, response []byte) error {
-	_, err := conn.Write(response)
+	_, err := conn.Write([]byte{0, 0, 0, 0})
 	return err
 }
 
