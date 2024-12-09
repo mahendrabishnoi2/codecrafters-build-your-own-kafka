@@ -58,7 +58,7 @@ func (a ApiVersionsResponseV4) Bytes() []byte {
 		return out
 	}
 
-	out := make([]byte, size)
+	out := make([]byte, size+4)
 
 	// message size
 	binary.BigEndian.PutUint32(out[0:4], uint32(size))
