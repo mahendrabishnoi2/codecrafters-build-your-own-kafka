@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"os"
@@ -85,6 +86,8 @@ func (a ApiVersionsResponseV4) Bytes() []byte {
 
 	// tag buffer
 	out[size-1] = 0
+
+	hex.Dump(out)
 
 	return out
 }
