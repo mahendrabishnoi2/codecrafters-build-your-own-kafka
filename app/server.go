@@ -364,6 +364,7 @@ func Read(conn net.Conn) (*Message, error) {
 		}
 		// tag buffer
 		offset++
+		msg.RequestBody = reqBody
 	}
 
 	fmt.Printf("Request 5: %+v\n", msg)
