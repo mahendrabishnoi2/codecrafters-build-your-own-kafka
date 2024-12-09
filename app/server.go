@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"net"
 	"os"
@@ -31,9 +30,9 @@ func main() {
 	}
 	fmt.Printf("Received data: %v (%d)", buffer[4:8], int32(binary.BigEndian.Uint32(buffer[8:12])))
 
-	resp := make([]byte, 22)
+	resp := make([]byte, 23)
 	// message size
-	binary.BigEndian.PutUint32(resp[0:4], 18)
+	binary.BigEndian.PutUint32(resp[0:4], 19)
 	copy(resp[4:8], buffer[8:12]) // correlation id
 
 	// API Versions Response Body
@@ -51,13 +50,11 @@ func main() {
 	binary.BigEndian.PutUint16(resp[15:17], 10) // max version
 	resp[17] = 0                                // tag buffer
 	binary.BigEndian.PutUint32(resp[18:], 0)    // throttle time
+	resp[22] = 0                                // tag buffer
 
 	_, err = conn.Write(resp)
 	if err != nil {
 		fmt.Println("Error writing data: ", err.Error())
 		os.Exit(1)
 	}
-	fmt.Println("Response sent", resp)
-
-	fmt.Println(hex.Dump(resp))
 }
