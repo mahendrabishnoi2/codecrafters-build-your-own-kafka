@@ -68,6 +68,57 @@ type ApiVersionsResponseV4 struct {
 	Body   ApiVersionsResponseV4ResponseBody
 }
 
+func (a ApiVersionsResponseV4) Bytes() ([]byte, error) {
+	// https://binspec.org/kafka-api-versions-Response-v4
+	// correlation id - 4 bytes
+	// error code - 2 bytes
+	// api versions array length - 1 byte
+	// array length * (api key - 2 byte, min version - 2 byte, max version - 2 byte, tag buffer - 1 byte = 7 bytes)
+	// throttle time - 4 bytes
+	// tag buffer - 1 byte
+
+	size := 4 + 2 + 1 + len(a.Body.ApiVersions)*7 + 4 + 1
+	if a.Body.ErrorCode != NoError {
+		size = 6 // correlation id + error code
+		out := make([]byte, size+4)
+		binary.BigEndian.PutUint32(out[0:4], uint32(size))
+		binary.BigEndian.PutUint32(out[4:8], uint32(a.Header.CorrelationId))
+		binary.BigEndian.PutUint16(out[8:], uint16(a.Body.ErrorCode))
+		return out, nil
+	}
+
+	out := make([]byte, size+4)
+
+	// message size
+	binary.BigEndian.PutUint32(out[0:4], uint32(size))
+
+	// correlation id
+	binary.BigEndian.PutUint32(out[4:8], uint32(a.Header.CorrelationId))
+
+	// error code
+	binary.BigEndian.PutUint16(out[8:10], uint16(a.Body.ErrorCode))
+
+	// api versions array length
+	out[10] = byte(len(a.Body.ApiVersions) + 1)
+
+	// api versions array
+	for i, v := range a.Body.ApiVersions {
+		offset := 11 + i*7
+		binary.BigEndian.PutUint16(out[offset:offset+2], uint16(v.ApiKey))
+		binary.BigEndian.PutUint16(out[offset+2:offset+4], uint16(v.MinVersion))
+		binary.BigEndian.PutUint16(out[offset+4:offset+6], uint16(v.MaxVersion))
+		out[offset+6] = 0
+	}
+
+	// throttle time
+	binary.BigEndian.PutUint32(out[size-5:size-1], uint32(a.Body.ThrottleTime))
+
+	// tag buffer
+	out[size-1] = 0
+
+	return out, nil
+}
+
 type DescribeTopicPartitionsRequestV0 struct {
 	TopicNames             []string
 	ResponsePartitionLimit int32
@@ -203,57 +254,6 @@ func getResponseHeaderFromApiKey(apiKey ApiKey) int8 {
 	default:
 		return ResponseHeaderVersion1
 	}
-}
-
-func (a ApiVersionsResponseV4) Bytes() ([]byte, error) {
-	// https://binspec.org/kafka-api-versions-Response-v4
-	// correlation id - 4 bytes
-	// error code - 2 bytes
-	// api versions array length - 1 byte
-	// array length * (api key - 2 byte, min version - 2 byte, max version - 2 byte, tag buffer - 1 byte = 7 bytes)
-	// throttle time - 4 bytes
-	// tag buffer - 1 byte
-
-	size := 4 + 2 + 1 + len(a.Body.ApiVersions)*7 + 4 + 1
-	if a.Body.ErrorCode != NoError {
-		size = 6 // correlation id + error code
-		out := make([]byte, size+4)
-		binary.BigEndian.PutUint32(out[0:4], uint32(size))
-		binary.BigEndian.PutUint32(out[4:8], uint32(a.Header.CorrelationId))
-		binary.BigEndian.PutUint16(out[8:], uint16(a.Body.ErrorCode))
-		return out, nil
-	}
-
-	out := make([]byte, size+4)
-
-	// message size
-	binary.BigEndian.PutUint32(out[0:4], uint32(size))
-
-	// correlation id
-	binary.BigEndian.PutUint32(out[4:8], uint32(a.Header.CorrelationId))
-
-	// error code
-	binary.BigEndian.PutUint16(out[8:10], uint16(a.Body.ErrorCode))
-
-	// api versions array length
-	out[10] = byte(len(a.Body.ApiVersions) + 1)
-
-	// api versions array
-	for i, v := range a.Body.ApiVersions {
-		offset := 11 + i*7
-		binary.BigEndian.PutUint16(out[offset:offset+2], uint16(v.ApiKey))
-		binary.BigEndian.PutUint16(out[offset+2:offset+4], uint16(v.MinVersion))
-		binary.BigEndian.PutUint16(out[offset+4:offset+6], uint16(v.MaxVersion))
-		out[offset+6] = 0
-	}
-
-	// throttle time
-	binary.BigEndian.PutUint32(out[size-5:size-1], uint32(a.Body.ThrottleTime))
-
-	// tag buffer
-	out[size-1] = 0
-
-	return out, nil
 }
 
 type ApiVersionsResponseV4ResponseBody struct {
