@@ -362,8 +362,6 @@ func Read(conn net.Conn) (*Message, error) {
 		msg.RequestBody = reqBody
 	}
 
-	prettyPrint("Read", msg)
-
 	return &msg, nil
 }
 
