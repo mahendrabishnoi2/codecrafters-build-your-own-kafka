@@ -81,7 +81,6 @@ type DescribeTopicPartitionsResponseV0 struct {
 }
 
 func (d DescribeTopicPartitionsResponseV0) Bytes() ([]byte, error) {
-	prettyPrint("DescribeTopicPartitionsResponseV0", d)
 	buf := &bytes.Buffer{}
 
 	// prepare the response header v1
@@ -89,62 +88,74 @@ func (d DescribeTopicPartitionsResponseV0) Bytes() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(1, buf.Len())
 	err = buf.WriteByte(0) // tag buffer
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(2, buf.Len())
 
 	// prepare the response body
 	err = binary.Write(buf, binary.BigEndian, d.Body.ThrottleTime)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(3, buf.Len())
 	err = buf.WriteByte(byte(len(d.Body.Topics) + 1))
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(4, buf.Len())
 	for _, topic := range d.Body.Topics {
 		err = binary.Write(buf, binary.BigEndian, topic.ErrorCode)
 		if err != nil {
 			return nil, err
 		}
+		fmt.Println(5, buf.Len())
 
 		err = binary.Write(buf, binary.BigEndian, int8(len(topic.Name)+1))
 		if err != nil {
 			return nil, err
 		}
+		fmt.Println(6, buf.Len())
 
 		_, err = buf.WriteString(topic.Name)
 		if err != nil {
 			return nil, err
 		}
+		fmt.Println(7, buf.Len())
 
 		uuidBytes, _ := topic.ID.MarshalBinary()
 		_, err = buf.Write(uuidBytes)
 		if err != nil {
 			return nil, err
 		}
+		fmt.Println(8, buf.Len())
 
 		err = buf.WriteByte(topic.IsInternal)
 		if err != nil {
 			return nil, err
 		}
+		fmt.Println(9, buf.Len())
 
 		err = binary.Write(buf, binary.BigEndian, int32(len(topic.Partitions)+1))
 		if err != nil {
 			return nil, err
 		}
+		fmt.Println(10, buf.Len())
 
 		err = binary.Write(buf, binary.BigEndian, topic.AuthorizedOperations)
 		if err != nil {
 			return nil, err
 		}
+		fmt.Println(11, buf.Len())
 
 		// tag buffer
 		err = buf.WriteByte(0)
 		if err != nil {
 			return nil, err
 		}
+		fmt.Println(12, buf.Len())
 	}
 
 	// if d.Body.NextCursor != nil {
@@ -157,6 +168,7 @@ func (d DescribeTopicPartitionsResponseV0) Bytes() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(13, buf.Len())
 	// }
 
 	// tag buffer
@@ -164,9 +176,11 @@ func (d DescribeTopicPartitionsResponseV0) Bytes() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println(14, buf.Len())
 
 	bodyBytes := buf.Bytes()
 	messageSize := len(bodyBytes)
+	fmt.Println(15, messageSize)
 	out := make([]byte, 4+messageSize)
 	binary.BigEndian.PutUint32(out[0:4], uint32(messageSize))
 	copy(out[4:], bodyBytes)
