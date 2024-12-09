@@ -293,7 +293,7 @@ func Read(conn net.Conn) (*Message, error) {
 		return nil, err
 	}
 
-	fmt.Printf("Request 1: %+v\n", msg)
+	// fmt.Printf("Request 1: %+v\n", msg)
 
 	readBytes += 8
 
@@ -315,7 +315,7 @@ func Read(conn net.Conn) (*Message, error) {
 		readBytes += int32(clientIdLength)
 	}
 
-	fmt.Printf("Request 2: %+v\n", msg)
+	// fmt.Printf("Request 2: %+v\n", msg)
 
 	// read tagged fields if header version is 2 (for now just discard 1 byte)
 	if requestHeaderVersion == RequestHeaderVersion2 {
@@ -328,7 +328,7 @@ func Read(conn net.Conn) (*Message, error) {
 		// for now, we are assuming that the tagged fields are empty
 	}
 
-	fmt.Printf("Request 3: %+v\n", msg)
+	// fmt.Printf("Request 3: %+v\n", msg)
 
 	remainingBody := make([]byte, msg.MessageSize-readBytes)
 	_, err = conn.Read(remainingBody)
@@ -336,22 +336,22 @@ func Read(conn net.Conn) (*Message, error) {
 		return nil, err
 	}
 
-	fmt.Printf("Request 4: %+v\n", msg)
+	// fmt.Printf("Request 4: %+v\n", msg)
 
 	// Parse the request body
 	switch msg.Header.ApiKey {
 	case DescribeTopicPartitions:
 		reqBody := DescribeTopicPartitionsRequestV0{}
 		topicNamesArrayLength := int(remainingBody[0])
-		fmt.Println("Topic names array length: ", topicNamesArrayLength)
+		// fmt.Println("Topic names array length: ", topicNamesArrayLength)
 		topicNames := make([]string, topicNamesArrayLength)
 		offset := 1
 		for i := 0; i < topicNamesArrayLength-1; i++ {
 			topicNameLength := int(remainingBody[offset])
-			fmt.Println("Topic name length: ", topicNameLength)
+			// fmt.Println("Topic name length: ", topicNameLength)
 			offset++
 			topicNames[i] = string(remainingBody[offset : offset+topicNameLength])
-			fmt.Println("Topic name: ", topicNames[i])
+			// fmt.Println("Topic name: ", topicNames[i])
 			fmt.Println()
 			offset += topicNameLength
 			// topic tag buffer
@@ -359,7 +359,7 @@ func Read(conn net.Conn) (*Message, error) {
 		}
 		reqBody.TopicNames = topicNames
 
-		fmt.Println("offset", offset, "Remaining body: ", remainingBody[offset:])
+		// fmt.Println("offset", offset, "Remaining body: ", remainingBody[offset:])
 		reqBody.ResponsePartitionLimit = int32(binary.BigEndian.Uint32(remainingBody[offset : offset+4]))
 		offset += 4
 
