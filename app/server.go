@@ -138,6 +138,45 @@ func Send(conn net.Conn, response []byte) error {
 	return err
 }
 
+func handleRequest(conn net.Conn) {
+	defer func(conn net.Conn) {
+		err := conn.Close()
+		if err != nil {
+			fmt.Println("Error closing connection: ", err.Error())
+		}
+	}(conn)
+
+	for {
+		msg, err := Read(conn)
+		if err != nil {
+			fmt.Println("Error reading data: ", err.Error())
+			os.Exit(1)
+		}
+		fmt.Printf("Received message: %+v\n", msg)
+
+		resp := ApiVersionsResponseV4{
+			Header: ResponseHeaderV0{CorrelationId: msg.Header.CorrelationId},
+			Body: ApiVersionsResponseV4ResponseBody{
+				ErrorCode: msg.Error,
+			},
+		}
+
+		if msg.Error == NoError {
+			resp.Body.ApiVersions = []ApiVersion{
+				{ApiKey: 18, MinVersion: 0, MaxVersion: 5},
+				{ApiKey: 0, MinVersion: 0, MaxVersion: 11},
+			}
+		}
+
+		fmt.Printf("Sending response: %+v\n", resp)
+		err = Send(conn, resp.Bytes())
+		if err != nil {
+			fmt.Println("Error writing data: ", err.Error())
+			os.Exit(1)
+		}
+	}
+}
+
 func main() {
 	fmt.Println("Logs from your program will appear here!")
 
@@ -146,40 +185,19 @@ func main() {
 		fmt.Println("Failed to bind to port 9092")
 		os.Exit(1)
 	}
-	conn, err := l.Accept()
-	if err != nil {
-		fmt.Println("Error accepting connection: ", err.Error())
-		os.Exit(1)
-	}
-	defer conn.Close()
-
-	msg, err := Read(conn)
-	if err != nil {
-		fmt.Println("Error reading data: ", err.Error())
-		os.Exit(1)
-	}
-
-	fmt.Printf("Received message: %+v\n", msg)
-
-	resp := ApiVersionsResponseV4{
-		Header: ResponseHeaderV0{CorrelationId: msg.Header.CorrelationId},
-		Body: ApiVersionsResponseV4ResponseBody{
-			ErrorCode: msg.Error,
-		},
-	}
-
-	if msg.Error == NoError {
-		resp.Body.ApiVersions = []ApiVersion{
-			{ApiKey: 18, MinVersion: 0, MaxVersion: 5},
-			{ApiKey: 0, MinVersion: 0, MaxVersion: 11},
+	defer func(l net.Listener) {
+		err := l.Close()
+		if err != nil {
+			fmt.Println("Error closing listener: ", err.Error())
 		}
-	}
+	}(l)
 
-	fmt.Printf("Sending response: %+v\n", resp)
-	err = Send(conn, resp.Bytes())
-	if err != nil {
-		fmt.Println("Error writing data: ", err.Error())
-		os.Exit(1)
+	for {
+		conn, err := l.Accept()
+		if err != nil {
+			fmt.Println("Error accepting connection: ", err.Error())
+			os.Exit(1)
+		}
+		go handleRequest(conn)
 	}
-	return
 }
