@@ -7,6 +7,133 @@ import (
 	"os"
 )
 
+const (
+	NoError                 int16 = 0
+	ErrorUnsupportedVersion int16 = 35
+)
+
+type Message struct {
+	MessageSize int32
+	Header      RequestHeader
+	Error       int16
+}
+
+type RequestHeader struct {
+	ApiKey        int16
+	ApiVersion    int16
+	CorrelationId int32
+}
+
+type ResponseHeaderV0 struct {
+	CorrelationId int32
+}
+
+type ApiVersion struct {
+	ApiKey     int16
+	MinVersion int16
+	MaxVersion int16
+}
+
+type ApiVersionsResponseV4 struct {
+	Header ResponseHeaderV0
+	Body   ApiVersionsResponseV4ResponseBody
+}
+
+func (a ApiVersionsResponseV4) Bytes() []byte {
+	// https://binspec.org/kafka-api-versions-Response-v4
+	// correlation id - 4 bytes
+	// error code - 2 bytes
+	// api versions array length - 1 byte
+	// array length * (api key - 2 byte, min version - 2 byte, max version - 2 byte, tag buffer - 1 byte = 7 bytes)
+	// throttle time - 4 bytes
+	// tag buffer - 1 byte
+
+	size := 4 + 2 + 1 + len(a.Body.ApiVersions)*7 + 4 + 1
+	if a.Body.ErrorCode != NoError {
+		size = 6 // correlation id + error code
+		out := make([]byte, size)
+		binary.BigEndian.PutUint32(out, uint32(a.Header.CorrelationId))
+		binary.BigEndian.PutUint16(out[4:], uint16(a.Body.ErrorCode))
+		return out
+	}
+
+	out := make([]byte, size)
+
+	// message size
+	binary.BigEndian.PutUint32(out[0:4], uint32(size))
+
+	// correlation id
+	binary.BigEndian.PutUint32(out[4:8], uint32(a.Header.CorrelationId))
+
+	// error code
+	binary.BigEndian.PutUint16(out[8:10], uint16(a.Body.ErrorCode))
+
+	// api versions array length
+	out[10] = byte(len(a.Body.ApiVersions) + 1)
+
+	// api versions array
+	for i, v := range a.Body.ApiVersions {
+		offset := 11 + i*7
+		binary.BigEndian.PutUint16(out[offset:offset+2], uint16(v.ApiKey))
+		binary.BigEndian.PutUint16(out[offset+2:offset+4], uint16(v.MinVersion))
+		binary.BigEndian.PutUint16(out[offset+4:offset+6], uint16(v.MaxVersion))
+		out[offset+6] = 0
+	}
+
+	// throttle time
+	binary.BigEndian.PutUint32(out[size-5:size-1], uint32(a.Body.ThrottleTime))
+
+	// tag buffer
+	out[size-1] = 0
+
+	return out
+}
+
+type ApiVersionsResponseV4ResponseBody struct {
+	ErrorCode    int16
+	ApiVersions  []ApiVersion
+	ThrottleTime int32
+}
+
+func Read(conn net.Conn) (*Message, error) {
+	msg := Message{}
+
+	// Headers are 8 bytes long
+	err := binary.Read(conn, binary.BigEndian, &msg.MessageSize)
+	if err != nil {
+		return nil, err
+	}
+	err = binary.Read(conn, binary.BigEndian, &msg.Header.ApiKey)
+	if err != nil {
+		return nil, err
+	}
+	err = binary.Read(conn, binary.BigEndian, &msg.Header.ApiVersion)
+	if err != nil {
+		return nil, err
+	}
+	err = binary.Read(conn, binary.BigEndian, &msg.Header.CorrelationId)
+	if err != nil {
+		return nil, err
+	}
+
+	remainingBody := make([]byte, msg.MessageSize-8)
+	_, err = conn.Read(remainingBody)
+	if err != nil {
+		return nil, err
+	}
+
+	if msg.Header.ApiVersion < 0 || msg.Header.ApiVersion > 4 {
+		msg.Error = ErrorUnsupportedVersion
+		return &msg, nil
+	}
+	return &msg, nil
+}
+
+func Send(conn net.Conn, response []byte) error {
+	_, err := conn.Write(response)
+	return err
+}
+
 func main() {
 	fmt.Println("Logs from your program will appear here!")
 
@@ -22,39 +149,30 @@ func main() {
 	}
 	defer conn.Close()
 
-	buffer := make([]byte, 1024)
-	_, err = conn.Read(buffer)
+	msg, err := Read(conn)
 	if err != nil {
 		fmt.Println("Error reading data: ", err.Error())
 		os.Exit(1)
 	}
-	fmt.Printf("Received data: %v (%d)", buffer[4:8], int32(binary.BigEndian.Uint32(buffer[8:12])))
 
-	resp := make([]byte, 23)
-	// message size
-	binary.BigEndian.PutUint32(resp[0:4], 19)
-	copy(resp[4:8], buffer[8:12]) // correlation id
+	resp := ApiVersionsResponseV4{
+		Header: ResponseHeaderV0{CorrelationId: msg.Header.CorrelationId},
+		Body: ApiVersionsResponseV4ResponseBody{
+			ErrorCode: msg.Error,
+		},
+	}
 
-	// API Versions Response Body
-	// error code
-	binary.BigEndian.PutUint16(resp[8:10], 0)
+	if msg.Error == NoError {
+		resp.Body.ApiVersions = []ApiVersion{
+			{ApiKey: 18, MinVersion: 0, MaxVersion: 5},
+			{ApiKey: 0, MinVersion: 0, MaxVersion: 11},
+		}
+	}
 
-	// API Versions array
-	// length of array = 1 byte
-	resp[10] = 0x02
-
-	// element 1
-	// api key (2 bytes), min version (2 bytes), max version (2 bytes), tag buffer (0x00) (1 byte)
-	binary.BigEndian.PutUint16(resp[11:13], 18) // api key
-	binary.BigEndian.PutUint16(resp[13:15], 0)  // min version
-	binary.BigEndian.PutUint16(resp[15:17], 10) // max version
-	resp[17] = 0                                // tag buffer
-	binary.BigEndian.PutUint32(resp[18:], 0)    // throttle time
-	resp[22] = 0                                // tag buffer
-
-	_, err = conn.Write(resp)
+	err = Send(conn, resp.Bytes())
 	if err != nil {
 		fmt.Println("Error writing data: ", err.Error())
 		os.Exit(1)
 	}
+	return
 }
