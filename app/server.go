@@ -343,11 +343,11 @@ func Read(conn net.Conn) (*Message, error) {
 	switch msg.Header.ApiKey {
 	case DescribeTopicPartitions:
 		reqBody := DescribeTopicPartitionsRequestV0{}
-		topicNamesArrayLength := int(remainingBody[0])
+		topicNamesArrayLength := int(remainingBody[0]) - 1
 		// fmt.Println("Topic names array length: ", topicNamesArrayLength)
 		topicNames := make([]string, topicNamesArrayLength)
 		offset := 1
-		for i := 0; i < topicNamesArrayLength-1; i++ {
+		for i := 0; i < topicNamesArrayLength; i++ {
 			topicNameLength := int(remainingBody[offset])
 			// fmt.Println("Topic name length: ", topicNameLength)
 			offset++
@@ -379,7 +379,6 @@ func Read(conn net.Conn) (*Message, error) {
 }
 
 func Send(conn net.Conn, response []byte) error {
-	prettyPrint("Send", response)
 	_, err := conn.Write([]byte{0, 0, 0, 0})
 	return err
 }
