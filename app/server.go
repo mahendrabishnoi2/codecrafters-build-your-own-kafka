@@ -31,9 +31,9 @@ func main() {
 	}
 	fmt.Printf("Received data: %v (%d)", buffer[4:8], int32(binary.BigEndian.Uint32(buffer[8:12])))
 
-	resp := make([]byte, 23)
+	resp := make([]byte, 22)
 	// message size
-	binary.BigEndian.PutUint32(resp[0:4], 14)
+	binary.BigEndian.PutUint32(resp[0:4], 18)
 	copy(resp[4:8], buffer[8:12]) // correlation id
 
 	// API Versions Response Body
