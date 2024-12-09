@@ -49,9 +49,8 @@ func main() {
 	binary.BigEndian.PutUint16(resp[11:13], 18) // api key
 	binary.BigEndian.PutUint16(resp[13:15], 0)  // min version
 	binary.BigEndian.PutUint16(resp[15:17], 10) // max version
-	resp[17] = 0x00
-	binary.BigEndian.PutUint32(resp[18:], 0) // throttle time
-	binary.BigEndian.PutUint16(resp[19:23], 0)
+	resp[17] = 0                                // tag buffer
+	binary.BigEndian.PutUint32(resp[18:], 0)    // throttle time
 
 	_, err = conn.Write(resp)
 	if err != nil {
