@@ -339,18 +339,22 @@ func Read(conn net.Conn) (*Message, error) {
 	case DescribeTopicPartitions:
 		reqBody := DescribeTopicPartitionsRequestV0{}
 		topicNamesArrayLength := int(remainingBody[0])
+		fmt.Println("Topic names array length: ", topicNamesArrayLength)
 		topicNames := make([]string, topicNamesArrayLength)
 		offset := 1
 		for i := 0; i < topicNamesArrayLength; i++ {
 			topicNameLength := int(remainingBody[offset])
+			fmt.Println("Topic name length: ", topicNameLength)
 			offset++
 			topicNames[i] = string(remainingBody[offset : offset+topicNameLength])
+			fmt.Println("Topic name: ", topicNames[i])
 			offset += topicNameLength
 			// topic tag buffer
 			offset++
 		}
 		reqBody.TopicNames = topicNames
 
+		fmt.Println("offset", offset, "Remaining body: ", remainingBody[offset:])
 		reqBody.ResponsePartitionLimit = int32(binary.BigEndian.Uint32(remainingBody[offset : offset+4]))
 		offset += 4
 
