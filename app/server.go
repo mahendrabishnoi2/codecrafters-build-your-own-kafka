@@ -337,6 +337,7 @@ func Read(conn net.Conn) (*Message, error) {
 		return nil, err
 	}
 
+	fmt.Println(hex.Dump(remainingBody))
 	// fmt.Printf("Request 4: %+v\n", msg)
 
 	// Parse the request body
