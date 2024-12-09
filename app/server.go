@@ -158,6 +158,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	fmt.Printf("Received message: %+v", msg)
+
 	resp := ApiVersionsResponseV4{
 		Header: ResponseHeaderV0{CorrelationId: msg.Header.CorrelationId},
 		Body: ApiVersionsResponseV4ResponseBody{
