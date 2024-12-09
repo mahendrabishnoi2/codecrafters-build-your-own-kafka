@@ -379,6 +379,7 @@ func Read(conn net.Conn) (*Message, error) {
 }
 
 func Send(conn net.Conn, response []byte) error {
+	prettyPrint("Send", response)
 	_, err := conn.Write([]byte{0, 0, 0, 0})
 	return err
 }
