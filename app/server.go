@@ -435,7 +435,7 @@ func prepareDescribeTopicPartitionsResponse(msg *Message) DescribeTopicPartition
 
 	resp.Body.Topics = []DescribeTopicPartitionsResponseV0Topic{
 		{
-			ErrorCode:            UnknownTopicOrPartition,
+			ErrorCode:            4,
 			Name:                 requestBody.TopicNames[0],
 			ID:                   [16]byte{},
 			IsInternal:           0,
