@@ -289,6 +289,8 @@ func Read(conn net.Conn) (*Message, error) {
 		return nil, err
 	}
 
+	fmt.Printf("Request: %+v\n", msg)
+
 	readBytes += 8
 
 	// Read the client id
