@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -170,8 +169,6 @@ func (d DescribeTopicPartitionsResponseV0) Bytes() ([]byte, error) {
 	binary.BigEndian.PutUint32(out[0:4], uint32(messageSize))
 	copy(out[4:], bodyBytes)
 
-	fmt.Println(hex.Dump(out))
-
 	return out, nil
 }
 
@@ -256,8 +253,6 @@ func (a ApiVersionsResponseV4) Bytes() ([]byte, error) {
 	// tag buffer
 	out[size-1] = 0
 
-	fmt.Println(hex.Dump(out))
-
 	return out, nil
 }
 
@@ -336,7 +331,6 @@ func Read(conn net.Conn) (*Message, error) {
 		return nil, err
 	}
 
-	fmt.Println(hex.Dump(remainingBody))
 	// fmt.Printf("Request 4: %+v\n", msg)
 
 	// Parse the request body
@@ -344,23 +338,18 @@ func Read(conn net.Conn) (*Message, error) {
 	case DescribeTopicPartitions:
 		reqBody := DescribeTopicPartitionsRequestV0{}
 		topicNamesArrayLength := int(remainingBody[0]) - 1
-		// fmt.Println("Topic names array length: ", topicNamesArrayLength)
 		topicNames := make([]string, topicNamesArrayLength)
 		offset := 1
 		for i := 0; i < topicNamesArrayLength; i++ {
 			topicNameLength := int(remainingBody[offset]) - 1
-			// fmt.Println("Topic name length: ", topicNameLength)
 			offset++
 			topicNames[i] = string(remainingBody[offset : offset+topicNameLength])
-			// fmt.Println("Topic name: ", topicNames[i])
-			fmt.Println()
 			offset += topicNameLength
 			// topic tag buffer
 			offset++
 		}
 		reqBody.TopicNames = topicNames
 
-		// fmt.Println("offset", offset, "Remaining body: ", remainingBody[offset:])
 		reqBody.ResponsePartitionLimit = int32(binary.BigEndian.Uint32(remainingBody[offset : offset+4]))
 		offset += 4
 
