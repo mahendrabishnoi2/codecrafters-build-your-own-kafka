@@ -54,7 +54,7 @@ func (a ApiVersionsResponseV4) Bytes() []byte {
 		size = 6 // correlation id + error code
 		out := make([]byte, size+4)
 		binary.BigEndian.PutUint32(out[0:4], uint32(size))
-		binary.BigEndian.PutUint32(out, uint32(a.Header.CorrelationId))
+		binary.BigEndian.PutUint32(out[4:8], uint32(a.Header.CorrelationId))
 		binary.BigEndian.PutUint16(out[4:], uint16(a.Body.ErrorCode))
 		return out
 	}
