@@ -342,7 +342,7 @@ func Read(conn net.Conn) (*Message, error) {
 		fmt.Println("Topic names array length: ", topicNamesArrayLength)
 		topicNames := make([]string, topicNamesArrayLength)
 		offset := 1
-		for i := 0; i < topicNamesArrayLength; i++ {
+		for i := 0; i < topicNamesArrayLength-1; i++ {
 			topicNameLength := int(remainingBody[offset])
 			fmt.Println("Topic name length: ", topicNameLength)
 			offset++
