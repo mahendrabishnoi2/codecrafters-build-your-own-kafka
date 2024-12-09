@@ -373,7 +373,7 @@ func Read(conn net.Conn) (*Message, error) {
 		msg.RequestBody = reqBody
 	}
 
-	fmt.Printf("Request 5: %+v\n", msg)
+	prettyPrint("Read", msg)
 
 	return &msg, nil
 }
