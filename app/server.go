@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -115,7 +117,8 @@ func (d DescribeTopicPartitionsResponseV0) Bytes() ([]byte, error) {
 			return nil, err
 		}
 
-		_, err = buf.Write(topic.ID[:])
+		uuidBytes, _ := topic.ID.MarshalBinary()
+		_, err = buf.Write(uuidBytes)
 		if err != nil {
 			return nil, err
 		}
@@ -180,7 +183,7 @@ type DescribeTopicPartitionsResponseV0ResponseBody struct {
 type DescribeTopicPartitionsResponseV0Topic struct {
 	ErrorCode            int16
 	Name                 string
-	ID                   [16]byte
+	ID                   uuid.UUID
 	IsInternal           byte
 	Partitions           []any
 	AuthorizedOperations int32
@@ -435,9 +438,9 @@ func prepareDescribeTopicPartitionsResponse(msg *Message) DescribeTopicPartition
 
 	resp.Body.Topics = []DescribeTopicPartitionsResponseV0Topic{
 		{
-			ErrorCode:            4,
+			ErrorCode:            UnknownTopicOrPartition,
 			Name:                 requestBody.TopicNames[0],
-			ID:                   [16]byte{},
+			ID:                   uuid.UUID{},
 			IsInternal:           0,
 			Partitions:           nil,
 			AuthorizedOperations: 3576, // hardcoded for stage vt6
