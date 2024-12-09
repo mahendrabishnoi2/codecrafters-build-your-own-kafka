@@ -354,6 +354,8 @@ func Read(conn net.Conn) (*Message, error) {
 		offset++
 	}
 
+	fmt.Printf("Request: %+v\n", msg)
+
 	return &msg, nil
 }
 
