@@ -146,17 +146,17 @@ func (d DescribeTopicPartitionsResponseV0) Bytes() ([]byte, error) {
 		}
 	}
 
-	if d.Body.NextCursor != nil {
-		err = buf.WriteByte(byte(*d.Body.NextCursor))
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		err = buf.WriteByte(NilByte)
-		if err != nil {
-			return nil, err
-		}
+	// if d.Body.NextCursor != nil {
+	// 	err = buf.WriteByte(byte(*d.Body.NextCursor))
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// } else {
+	err = buf.WriteByte(NilByte)
+	if err != nil {
+		return nil, err
 	}
+	// }
 
 	// tag buffer
 	err = buf.WriteByte(0)
