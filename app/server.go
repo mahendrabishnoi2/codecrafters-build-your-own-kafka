@@ -87,7 +87,7 @@ func (a ApiVersionsResponseV4) Bytes() []byte {
 	// tag buffer
 	out[size-1] = 0
 
-	hex.Dump(out)
+	fmt.Println(hex.Dump(out))
 
 	return out
 }
@@ -158,7 +158,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Received message: %+v", msg)
+	fmt.Printf("Received message: %+v\n", msg)
 
 	resp := ApiVersionsResponseV4{
 		Header: ResponseHeaderV0{CorrelationId: msg.Header.CorrelationId},
@@ -174,7 +174,7 @@ func main() {
 		}
 	}
 
-	fmt.Printf("Sending response: %+v", resp)
+	fmt.Printf("Sending response: %+v\n", resp)
 	err = Send(conn, resp.Bytes())
 	if err != nil {
 		fmt.Println("Error writing data: ", err.Error())
