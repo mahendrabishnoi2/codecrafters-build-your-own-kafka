@@ -174,6 +174,7 @@ func main() {
 		}
 	}
 
+	fmt.Printf("Sending response: %+v", resp)
 	err = Send(conn, resp.Bytes())
 	if err != nil {
 		fmt.Println("Error writing data: ", err.Error())
