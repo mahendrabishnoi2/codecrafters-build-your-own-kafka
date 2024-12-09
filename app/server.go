@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -352,6 +353,7 @@ func Read(conn net.Conn) (*Message, error) {
 			offset++
 			topicNames[i] = string(remainingBody[offset : offset+topicNameLength])
 			fmt.Println("Topic name: ", topicNames[i])
+			fmt.Println()
 			offset += topicNameLength
 			// topic tag buffer
 			offset++
@@ -371,6 +373,7 @@ func Read(conn net.Conn) (*Message, error) {
 		msg.RequestBody = reqBody
 	}
 
+	time.Sleep(1 * time.Second)
 	fmt.Printf("Request 5: %+v\n", msg)
 
 	return &msg, nil
