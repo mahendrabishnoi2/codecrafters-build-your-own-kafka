@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/codecrafters-io/kafka-starter-go/api"
 	"github.com/google/uuid"
 )
 
@@ -30,31 +31,13 @@ const (
 	ErrorUnsupportedVersion ErrorCode = 35
 )
 
-type ApiKey = int16
-
-const (
-	ApiVersions             ApiKey = 18
-	DescribeTopicPartitions ApiKey = 75
-)
-
 const NilByte = 0xff
 
 type Message struct {
 	MessageSize int32
-	Header      RequestHeader
+	Header      api.RequestHeader
 	Error       int16
 	RequestBody any
-}
-
-type RequestHeader struct {
-	ApiKey        ApiKey
-	ApiVersion    int16
-	CorrelationId int32
-	ClientId      string
-}
-
-type ResponseHeader struct {
-	CorrelationId int32
 }
 
 type ApiVersion struct {
@@ -64,7 +47,7 @@ type ApiVersion struct {
 }
 
 type ApiVersionsResponseV4 struct {
-	Header ResponseHeader
+	Header api.ResponseHeader
 	Body   ApiVersionsResponseV4ResponseBody
 }
 
@@ -126,7 +109,7 @@ type DescribeTopicPartitionsRequestV0 struct {
 }
 
 type DescribeTopicPartitionsResponseV0 struct {
-	Header ResponseHeader
+	Header api.ResponseHeader
 	Body   DescribeTopicPartitionsResponseV0ResponseBody
 }
 
@@ -238,18 +221,18 @@ type DescribeTopicPartitionsResponseV0Topic struct {
 	AuthorizedOperations int32
 }
 
-func getRequestHeaderFromApiKey(apiKey ApiKey) int8 {
+func getRequestHeaderFromApiKey(apiKey api.ApiKey) int8 {
 	switch apiKey {
-	case ApiVersions:
+	case api.ApiVersions:
 		return RequestHeaderVersion1
 	default:
 		return RequestHeaderVersion2
 	}
 }
 
-func getResponseHeaderFromApiKey(apiKey ApiKey) int8 {
+func getResponseHeaderFromApiKey(apiKey api.ApiKey) int8 {
 	switch apiKey {
-	case ApiVersions:
+	case api.ApiVersions:
 		return ResponseHeaderVersion0
 	default:
 		return ResponseHeaderVersion1
@@ -328,7 +311,7 @@ func Read(conn net.Conn) (*Message, error) {
 
 	// Parse the request body
 	switch msg.Header.ApiKey {
-	case DescribeTopicPartitions:
+	case api.DescribeTopicPartitions:
 		reqBody := DescribeTopicPartitionsRequestV0{}
 		topicNamesArrayLength := int(remainingBody[0]) - 1
 		topicNames := make([]string, topicNamesArrayLength)
@@ -385,9 +368,9 @@ func handleRequest(conn net.Conn) {
 
 		var resp bytess
 		switch msg.Header.ApiKey {
-		case ApiVersions:
+		case api.ApiVersions:
 			resp = prepareApiVersionsResponse(msg)
-		case DescribeTopicPartitions:
+		case api.DescribeTopicPartitions:
 			resp = prepareDescribeTopicPartitionsResponse(msg)
 		}
 
@@ -408,7 +391,7 @@ func handleRequest(conn net.Conn) {
 func prepareDescribeTopicPartitionsResponse(msg *Message) DescribeTopicPartitionsResponseV0 {
 	requestBody := msg.RequestBody.(DescribeTopicPartitionsRequestV0)
 	resp := DescribeTopicPartitionsResponseV0{
-		Header: ResponseHeader{
+		Header: api.ResponseHeader{
 			CorrelationId: msg.Header.CorrelationId,
 		},
 		Body: DescribeTopicPartitionsResponseV0ResponseBody{
@@ -433,7 +416,7 @@ func prepareDescribeTopicPartitionsResponse(msg *Message) DescribeTopicPartition
 
 func prepareApiVersionsResponse(msg *Message) ApiVersionsResponseV4 {
 	resp := ApiVersionsResponseV4{
-		Header: ResponseHeader{CorrelationId: msg.Header.CorrelationId},
+		Header: api.ResponseHeader{CorrelationId: msg.Header.CorrelationId},
 		Body: ApiVersionsResponseV4ResponseBody{
 			ErrorCode: msg.Error,
 		},
