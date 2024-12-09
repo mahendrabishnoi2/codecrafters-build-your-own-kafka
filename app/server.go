@@ -88,74 +88,74 @@ func (d DescribeTopicPartitionsResponseV0) Bytes() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(1, buf.Len())
-	err = buf.WriteByte(0) // tag buffer
+	fmt.Println(1, buf.Len()) // 4
+	err = buf.WriteByte(0)    // tag buffer
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(2, buf.Len())
+	fmt.Println(2, buf.Len()) // 5
 
 	// prepare the response body
 	err = binary.Write(buf, binary.BigEndian, d.Body.ThrottleTime)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(3, buf.Len())
+	fmt.Println(3, buf.Len()) // 9
 	err = buf.WriteByte(byte(len(d.Body.Topics) + 1))
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(4, buf.Len())
+	fmt.Println(4, buf.Len()) // 10
 	for _, topic := range d.Body.Topics {
 		err = binary.Write(buf, binary.BigEndian, topic.ErrorCode)
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(5, buf.Len())
+		fmt.Println(5, buf.Len()) // 12
 
 		err = binary.Write(buf, binary.BigEndian, int8(len(topic.Name)+1))
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(6, buf.Len())
+		fmt.Println(6, buf.Len()) // 13
 
 		_, err = buf.WriteString(topic.Name)
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(7, buf.Len())
+		fmt.Println(7, buf.Len()) // 30 (29)
 
 		uuidBytes, _ := topic.ID.MarshalBinary()
 		_, err = buf.Write(uuidBytes)
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(8, buf.Len())
+		fmt.Println(8, buf.Len()) // 46
 
 		err = buf.WriteByte(topic.IsInternal)
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(9, buf.Len())
+		fmt.Println(9, buf.Len()) // 47
 
-		err = binary.Write(buf, binary.BigEndian, int32(len(topic.Partitions)+1))
+		err = binary.Write(buf, binary.BigEndian, int8(len(topic.Partitions)+1))
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(10, buf.Len())
+		fmt.Println(10, buf.Len()) // 48
 
 		err = binary.Write(buf, binary.BigEndian, topic.AuthorizedOperations)
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(11, buf.Len())
+		fmt.Println(11, buf.Len()) // 49
 
 		// tag buffer
 		err = buf.WriteByte(0)
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(12, buf.Len())
+		fmt.Println(12, buf.Len()) // 50
 	}
 
 	// if d.Body.NextCursor != nil {
