@@ -164,7 +164,7 @@ func handleRequest(conn net.Conn) {
 		if msg.Error == NoError {
 			resp.Body.ApiVersions = []ApiVersion{
 				{ApiKey: 18, MinVersion: 0, MaxVersion: 5},
-				{ApiKey: 0, MinVersion: 0, MaxVersion: 11},
+				{ApiKey: 75, MinVersion: 0, MaxVersion: 11},
 			}
 		}
 
