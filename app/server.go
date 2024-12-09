@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -80,7 +81,7 @@ type DescribeTopicPartitionsResponseV0 struct {
 }
 
 func (d DescribeTopicPartitionsResponseV0) Bytes() ([]byte, error) {
-	fmt.Printf("Response: %+v\n", d)
+	prettyPrint("DescribeTopicPartitionsResponseV0", d)
 	buf := &bytes.Buffer{}
 
 	// prepare the response header v1
@@ -497,4 +498,9 @@ func main() {
 
 func Ptr[T any](val T) *T {
 	return &val
+}
+
+func prettyPrint(identifier string, data any) {
+	b, _ := json.MarshalIndent(data, "", "\t")
+	fmt.Println(identifier, string(b))
 }
