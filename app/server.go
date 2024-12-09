@@ -80,6 +80,7 @@ type DescribeTopicPartitionsResponseV0 struct {
 }
 
 func (d DescribeTopicPartitionsResponseV0) Bytes() ([]byte, error) {
+	fmt.Printf("Response: %+v\n", d)
 	buf := &bytes.Buffer{}
 
 	// prepare the response header v1
