@@ -166,6 +166,8 @@ func (d DescribeTopicPartitionsResponseV0) Bytes() ([]byte, error) {
 	binary.BigEndian.PutUint32(out[0:4], uint32(messageSize))
 	copy(out[4:], bodyBytes)
 
+	fmt.Println(hex.Dump(out))
+
 	return out, nil
 }
 
