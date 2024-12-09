@@ -148,14 +148,14 @@ func (d DescribeTopicPartitionsResponseV0) Bytes() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(11, buf.Len()) // 49
+		fmt.Println(11, buf.Len()) // 52
 
 		// tag buffer
 		err = buf.WriteByte(0)
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(12, buf.Len()) // 50
+		fmt.Println(12, buf.Len()) // 53
 	}
 
 	// if d.Body.NextCursor != nil {
@@ -168,7 +168,7 @@ func (d DescribeTopicPartitionsResponseV0) Bytes() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(13, buf.Len())
+	fmt.Println(13, buf.Len()) // 54
 	// }
 
 	// tag buffer
@@ -176,7 +176,7 @@ func (d DescribeTopicPartitionsResponseV0) Bytes() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(14, buf.Len())
+	fmt.Println(14, buf.Len()) // 55
 
 	bodyBytes := buf.Bytes()
 	messageSize := len(bodyBytes)
