@@ -447,7 +447,7 @@ func prepareDescribeTopicPartitionsResponse(msg *Message) DescribeTopicPartition
 			AuthorizedOperations: 3576, // hardcoded for stage vt6
 		},
 	}
-
+	fmt.Printf("DescribeTopicPartitionsResponseV0 Response: %+v\n", resp)
 	return resp
 }
 
