@@ -289,7 +289,7 @@ func Read(conn net.Conn) (*Message, error) {
 		return nil, err
 	}
 
-	fmt.Printf("Request: %+v\n", msg)
+	fmt.Printf("Request 1: %+v\n", msg)
 
 	readBytes += 8
 
@@ -311,6 +311,8 @@ func Read(conn net.Conn) (*Message, error) {
 		readBytes += int32(clientIdLength)
 	}
 
+	fmt.Printf("Request 2: %+v\n", msg)
+
 	// read tagged fields if header version is 2 (for now just discard 1 byte)
 	if requestHeaderVersion == RequestHeaderVersion2 {
 		var taggedFieldsLength int8
@@ -322,11 +324,15 @@ func Read(conn net.Conn) (*Message, error) {
 		// for now, we are assuming that the tagged fields are empty
 	}
 
+	fmt.Printf("Request 3: %+v\n", msg)
+
 	remainingBody := make([]byte, msg.MessageSize-readBytes)
 	_, err = conn.Read(remainingBody)
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Printf("Request 4: %+v\n", msg)
 
 	// Parse the request body
 	switch msg.Header.ApiKey {
@@ -356,7 +362,7 @@ func Read(conn net.Conn) (*Message, error) {
 		offset++
 	}
 
-	fmt.Printf("Request: %+v\n", msg)
+	fmt.Printf("Request 5: %+v\n", msg)
 
 	return &msg, nil
 }
