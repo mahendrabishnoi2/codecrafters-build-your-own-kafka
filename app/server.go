@@ -286,7 +286,7 @@ func Read(conn net.Conn) (*Message, error) {
 
 	if msg.Header.ApiVersion < 0 || msg.Header.ApiVersion > 4 {
 		msg.Error = ErrorUnsupportedVersion
-		return &msg, nil
+		// return &msg, nil
 	}
 
 	// fmt.Printf("Request 1: %+v\n", msg)
