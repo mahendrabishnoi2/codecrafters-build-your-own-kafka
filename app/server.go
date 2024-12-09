@@ -395,7 +395,7 @@ func Read(conn net.Conn) (*Message, error) {
 
 func Send(conn net.Conn, response []byte) error {
 	fmt.Println(hex.Dump(response))
-	_, err := conn.Write([]byte{0, 0, 0, 0})
+	_, err := conn.Write(response)
 	return err
 }
 
