@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -9,23 +10,48 @@ import (
 )
 
 const (
-	NoError                 int16 = 0
-	ErrorUnsupportedVersion int16 = 35
+	RequestHeaderVersion0 int8 = 0
+	RequestHeaderVersion1 int8 = 1
+	RequestHeaderVersion2 int8 = 2
 )
+
+const (
+	ResponseHeaderVersion0 int8 = 0
+	ResponseHeaderVersion1 int8 = 1
+)
+
+type ErrorCode = int16
+
+const (
+	NoError                 ErrorCode = 0
+	UnknownTopicOrPartition ErrorCode = 3
+	ErrorUnsupportedVersion ErrorCode = 35
+)
+
+type ApiKey = int16
+
+const (
+	ApiVersions             ApiKey = 18
+	DescribeTopicPartitions ApiKey = 75
+)
+
+const NilByte = 0xff
 
 type Message struct {
 	MessageSize int32
 	Header      RequestHeader
 	Error       int16
+	RequestBody any
 }
 
 type RequestHeader struct {
-	ApiKey        int16
+	ApiKey        ApiKey
 	ApiVersion    int16
 	CorrelationId int32
+	ClientId      string
 }
 
-type ResponseHeaderV0 struct {
+type ResponseHeader struct {
 	CorrelationId int32
 }
 
@@ -36,11 +62,147 @@ type ApiVersion struct {
 }
 
 type ApiVersionsResponseV4 struct {
-	Header ResponseHeaderV0
+	Header ResponseHeader
 	Body   ApiVersionsResponseV4ResponseBody
 }
 
-func (a ApiVersionsResponseV4) Bytes() []byte {
+type DescribeTopicPartitionsRequestV0 struct {
+	TopicNames             []string
+	ResponsePartitionLimit int32
+	Cursor                 *int8
+}
+
+type DescribeTopicPartitionsResponseV0 struct {
+	Header ResponseHeader
+	Body   DescribeTopicPartitionsResponseV0ResponseBody
+}
+
+func (d DescribeTopicPartitionsResponseV0) Bytes() ([]byte, error) {
+	buf := &bytes.Buffer{}
+
+	// prepare the response header v1
+	err := binary.Write(buf, binary.BigEndian, d.Header.CorrelationId)
+	if err != nil {
+		return nil, err
+	}
+	err = buf.WriteByte(0) // tag buffer
+	if err != nil {
+		return nil, err
+	}
+
+	// prepare the response body
+	err = binary.Write(buf, binary.BigEndian, d.Body.ThrottleTime)
+	if err != nil {
+		return nil, err
+	}
+	err = buf.WriteByte(byte(len(d.Body.Topics) + 1))
+	if err != nil {
+		return nil, err
+	}
+	for _, topic := range d.Body.Topics {
+		err = binary.Write(buf, binary.BigEndian, topic.ErrorCode)
+		if err != nil {
+			return nil, err
+		}
+
+		err = binary.Write(buf, binary.BigEndian, int8(len(topic.Name)+1))
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = buf.WriteString(topic.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = buf.Write(topic.ID[:])
+		if err != nil {
+			return nil, err
+		}
+
+		err = buf.WriteByte(topic.IsInternal)
+		if err != nil {
+			return nil, err
+		}
+
+		err = binary.Write(buf, binary.BigEndian, int32(len(topic.Partitions)+1))
+		if err != nil {
+			return nil, err
+		}
+
+		err = binary.Write(buf, binary.BigEndian, topic.AuthorizedOperations)
+		if err != nil {
+			return nil, err
+		}
+
+		// tag buffer
+		err = buf.WriteByte(0)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if d.Body.NextCursor != nil {
+		err = buf.WriteByte(byte(*d.Body.NextCursor))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err = buf.WriteByte(NilByte)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// tag buffer
+	err = buf.WriteByte(0)
+	if err != nil {
+		return nil, err
+	}
+
+	bodyBytes := buf.Bytes()
+	messageSize := len(bodyBytes)
+	out := make([]byte, 4+messageSize)
+	binary.BigEndian.PutUint32(out[0:4], uint32(messageSize))
+	copy(out[4:], bodyBytes)
+
+	return out, nil
+}
+
+type DescribeTopicPartitionsResponseV0ResponseBody struct {
+	ThrottleTime int32
+	Topics       []DescribeTopicPartitionsResponseV0Topic
+	NextCursor   *int8
+}
+
+type DescribeTopicPartitionsResponseV0Topic struct {
+	ErrorCode            int16
+	Name                 string
+	ID                   [16]byte
+	IsInternal           byte
+	Partitions           []any
+	AuthorizedOperations int32
+}
+
+func getRequestHeaderFromApiKey(apiKey ApiKey) int8 {
+	switch apiKey {
+	case ApiVersions:
+		return RequestHeaderVersion1
+	default:
+		return RequestHeaderVersion2
+	}
+}
+
+func getResponseHeaderFromApiKey(apiKey ApiKey) int8 {
+	switch apiKey {
+	case ApiVersions:
+		return ResponseHeaderVersion0
+	default:
+		return ResponseHeaderVersion1
+	}
+}
+
+func (a ApiVersionsResponseV4) Bytes() ([]byte, error) {
 	// https://binspec.org/kafka-api-versions-Response-v4
 	// correlation id - 4 bytes
 	// error code - 2 bytes
@@ -56,7 +218,7 @@ func (a ApiVersionsResponseV4) Bytes() []byte {
 		binary.BigEndian.PutUint32(out[0:4], uint32(size))
 		binary.BigEndian.PutUint32(out[4:8], uint32(a.Header.CorrelationId))
 		binary.BigEndian.PutUint16(out[8:], uint16(a.Body.ErrorCode))
-		return out
+		return out, nil
 	}
 
 	out := make([]byte, size+4)
@@ -90,7 +252,7 @@ func (a ApiVersionsResponseV4) Bytes() []byte {
 
 	fmt.Println(hex.Dump(out))
 
-	return out
+	return out, nil
 }
 
 type ApiVersionsResponseV4ResponseBody struct {
@@ -101,6 +263,7 @@ type ApiVersionsResponseV4ResponseBody struct {
 
 func Read(conn net.Conn) (*Message, error) {
 	msg := Message{}
+	var readBytes int32
 
 	// Headers are 8 bytes long
 	err := binary.Read(conn, binary.BigEndian, &msg.MessageSize)
@@ -115,21 +278,80 @@ func Read(conn net.Conn) (*Message, error) {
 	if err != nil {
 		return nil, err
 	}
+	if msg.Header.ApiVersion < 0 || msg.Header.ApiVersion > 4 {
+		msg.Error = ErrorUnsupportedVersion
+		return &msg, nil
+	}
 	err = binary.Read(conn, binary.BigEndian, &msg.Header.CorrelationId)
 	if err != nil {
 		return nil, err
 	}
 
-	remainingBody := make([]byte, msg.MessageSize-8)
+	readBytes += 8
+
+	// Read the client id
+	requestHeaderVersion := getRequestHeaderFromApiKey(msg.Header.ApiKey)
+	if requestHeaderVersion == RequestHeaderVersion1 || requestHeaderVersion == RequestHeaderVersion2 {
+		var clientIdLength int16
+		err = binary.Read(conn, binary.BigEndian, &clientIdLength)
+		if err != nil {
+			return nil, err
+		}
+		readBytes += 2
+		clientId := make([]byte, clientIdLength)
+		_, err = conn.Read(clientId)
+		if err != nil {
+			return nil, err
+		}
+		msg.Header.ClientId = string(clientId)
+		readBytes += int32(clientIdLength)
+	}
+
+	// read tagged fields if header version is 2 (for now just discard 1 byte)
+	if requestHeaderVersion == RequestHeaderVersion2 {
+		var taggedFieldsLength int8
+		err = binary.Read(conn, binary.BigEndian, &taggedFieldsLength)
+		if err != nil {
+			return nil, err
+		}
+		readBytes += 1
+		// for now, we are assuming that the tagged fields are empty
+	}
+
+	remainingBody := make([]byte, msg.MessageSize-readBytes)
 	_, err = conn.Read(remainingBody)
 	if err != nil {
 		return nil, err
 	}
 
-	if msg.Header.ApiVersion < 0 || msg.Header.ApiVersion > 4 {
-		msg.Error = ErrorUnsupportedVersion
-		return &msg, nil
+	// Parse the request body
+	switch msg.Header.ApiKey {
+	case DescribeTopicPartitions:
+		reqBody := DescribeTopicPartitionsRequestV0{}
+		topicNamesArrayLength := int(remainingBody[0])
+		topicNames := make([]string, topicNamesArrayLength)
+		offset := 1
+		for i := 0; i < topicNamesArrayLength; i++ {
+			topicNameLength := int(remainingBody[offset])
+			offset++
+			topicNames[i] = string(remainingBody[offset : offset+topicNameLength])
+			offset += topicNameLength
+			// topic tag buffer
+			offset++
+		}
+		reqBody.TopicNames = topicNames
+
+		reqBody.ResponsePartitionLimit = int32(binary.BigEndian.Uint32(remainingBody[offset : offset+4]))
+		offset += 4
+
+		cursor := remainingBody[offset]
+		if cursor != 0xff {
+			reqBody.Cursor = Ptr(int8(cursor))
+		}
+		// tag buffer
+		offset++
 	}
+
 	return &msg, nil
 }
 
@@ -154,27 +376,75 @@ func handleRequest(conn net.Conn) {
 		}
 		fmt.Printf("Received message: %+v\n", msg)
 
-		resp := ApiVersionsResponseV4{
-			Header: ResponseHeaderV0{CorrelationId: msg.Header.CorrelationId},
-			Body: ApiVersionsResponseV4ResponseBody{
-				ErrorCode: msg.Error,
-			},
+		type bytess interface {
+			Bytes() ([]byte, error)
 		}
 
-		if msg.Error == NoError {
-			resp.Body.ApiVersions = []ApiVersion{
-				{ApiKey: 18, MinVersion: 0, MaxVersion: 5},
-				{ApiKey: 75, MinVersion: 0, MaxVersion: 11},
-			}
+		var resp bytess
+		switch msg.Header.ApiKey {
+		case ApiVersions:
+			resp = prepareApiVersionsResponse(msg)
+		case DescribeTopicPartitions:
+			resp = prepareDescribeTopicPartitionsResponse(msg)
 		}
 
-		fmt.Printf("Sending response: %+v\n", resp)
-		err = Send(conn, resp.Bytes())
+		respBytes, err := resp.Bytes()
+		if err != nil {
+			fmt.Println("Error preparing response: ", err.Error())
+			os.Exit(1)
+		}
+
+		err = Send(conn, respBytes)
 		if err != nil {
 			fmt.Println("Error writing data: ", err.Error())
 			os.Exit(1)
 		}
 	}
+}
+
+func prepareDescribeTopicPartitionsResponse(msg *Message) DescribeTopicPartitionsResponseV0 {
+	requestBody := msg.RequestBody.(DescribeTopicPartitionsRequestV0)
+	resp := DescribeTopicPartitionsResponseV0{
+		Header: ResponseHeader{
+			CorrelationId: msg.Header.CorrelationId,
+		},
+		Body: DescribeTopicPartitionsResponseV0ResponseBody{
+			ThrottleTime: 0,
+			Topics:       nil,
+			NextCursor:   nil,
+		},
+	}
+
+	resp.Body.Topics = []DescribeTopicPartitionsResponseV0Topic{
+		{
+			ErrorCode:            UnknownTopicOrPartition,
+			Name:                 requestBody.TopicNames[0],
+			ID:                   [16]byte{},
+			IsInternal:           0,
+			Partitions:           nil,
+			AuthorizedOperations: 3576, // hardcoded for stage vt6
+		},
+	}
+
+	return resp
+}
+
+func prepareApiVersionsResponse(msg *Message) ApiVersionsResponseV4 {
+	resp := ApiVersionsResponseV4{
+		Header: ResponseHeader{CorrelationId: msg.Header.CorrelationId},
+		Body: ApiVersionsResponseV4ResponseBody{
+			ErrorCode: msg.Error,
+		},
+	}
+
+	if msg.Error == NoError {
+		resp.Body.ApiVersions = []ApiVersion{
+			{ApiKey: 18, MinVersion: 0, MaxVersion: 5},
+			{ApiKey: 75, MinVersion: 0, MaxVersion: 11},
+		}
+	}
+
+	return resp
 }
 
 func main() {
@@ -200,4 +470,8 @@ func main() {
 		}
 		go handleRequest(conn)
 	}
+}
+
+func Ptr[T any](val T) *T {
+	return &val
 }
