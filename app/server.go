@@ -51,6 +51,7 @@ func main() {
 	binary.BigEndian.PutUint16(resp[15:17], 10) // max version
 	resp[17] = 0x00
 	resp[18] = 0x00
+	binary.BigEndian.PutUint16(resp[19:21], 0)
 
 	_, err = conn.Write(resp)
 	if err != nil {
