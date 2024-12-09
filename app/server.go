@@ -279,13 +279,14 @@ func Read(conn net.Conn) (*Message, error) {
 	if err != nil {
 		return nil, err
 	}
-	if msg.Header.ApiVersion < 0 || msg.Header.ApiVersion > 4 {
-		msg.Error = ErrorUnsupportedVersion
-		return &msg, nil
-	}
 	err = binary.Read(conn, binary.BigEndian, &msg.Header.CorrelationId)
 	if err != nil {
 		return nil, err
+	}
+
+	if msg.Header.ApiVersion < 0 || msg.Header.ApiVersion > 4 {
+		msg.Error = ErrorUnsupportedVersion
+		return &msg, nil
 	}
 
 	// fmt.Printf("Request 1: %+v\n", msg)
