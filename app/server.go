@@ -380,7 +380,7 @@ func Read(conn net.Conn) (*Message, error) {
 }
 
 func Send(conn net.Conn, response []byte) error {
-	_, err := conn.Write([]byte{0, 0, 0, 0})
+	_, err := conn.Write(response)
 	return err
 }
 
