@@ -406,6 +406,7 @@ func handleRequest(conn net.Conn) {
 
 func prepareDescribeTopicPartitionsResponse(msg *Message) DescribeTopicPartitionsResponseV0 {
 	requestBody := msg.RequestBody.(DescribeTopicPartitionsRequestV0)
+	fmt.Printf("Request body: %+v", requestBody)
 	resp := DescribeTopicPartitionsResponseV0{
 		Header: ResponseHeader{
 			CorrelationId: msg.Header.CorrelationId,
