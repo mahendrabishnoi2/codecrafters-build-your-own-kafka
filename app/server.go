@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -135,12 +136,13 @@ func Read(conn net.Conn) (*Message, error) {
 	}
 
 	messageSize := int32(binary.BigEndian.Uint32(messageSizeBytes))
-	fmt.Println("messageSizeBytes", messageSizeBytes, "messageSize", messageSize)
 	bodyBytes := make([]byte, messageSize)
 	_, err = conn.Read(bodyBytes)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("bodyBytes", bodyBytes)
+	fmt.Println(hex.Dump(bodyBytes))
 
 	var req api.RawRequest
 	req = req.From(messageSizeBytes, bodyBytes)
