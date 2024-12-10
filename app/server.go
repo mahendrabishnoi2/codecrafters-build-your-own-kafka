@@ -147,6 +147,8 @@ func Read(conn net.Conn) (*Message, error) {
 	var req api.RawRequest
 	req = req.From(messageSizeBytes, bodyBytes)
 
+	fmt.Println("req", req)
+
 	dec := &decoder.BinaryDecoder{}
 	dec.Init(req.Payload)
 
