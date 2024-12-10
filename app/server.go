@@ -135,6 +135,7 @@ func Read(conn net.Conn) (*Message, error) {
 	}
 
 	messageSize := int32(binary.BigEndian.Uint32(messageSizeBytes))
+	fmt.Println("messageSizeBytes", messageSizeBytes, "messageSize", messageSize)
 	bodyBytes := make([]byte, messageSize)
 	_, err = conn.Read(bodyBytes)
 	if err != nil {
