@@ -159,6 +159,8 @@ func Read(conn net.Conn) (*Message, error) {
 		return nil, err
 	}
 
+	fmt.Println("reqHeader", reqHeader)
+
 	msg.MessageSize = messageSize
 	msg.Header = reqHeader
 	if msg.Header.ApiVersion < 0 || msg.Header.ApiVersion > 4 {
