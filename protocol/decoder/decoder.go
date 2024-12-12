@@ -2,6 +2,7 @@ package decoder
 
 import (
 	"encoding/binary"
+	"fmt"
 )
 
 type BinaryDecoder struct {
@@ -55,6 +56,7 @@ func (d *BinaryDecoder) GetEmptyTaggedFieldArray() any {
 }
 
 func (d *BinaryDecoder) GetUnsignedVarint() uint64 {
+	fmt.Println("Running binary.Uvarint on", d.raw[d.offset:])
 	value, n := binary.Uvarint(d.raw[d.offset:])
 	d.offset += n
 	return value
