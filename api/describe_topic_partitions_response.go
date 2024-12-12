@@ -1,13 +1,11 @@
 package api
 
 import (
-	"bytes"
-	"encoding/binary"
-
+	"github.com/codecrafters-io/kafka-starter-go/protocol/encoder"
 	"github.com/google/uuid"
 )
 
-type DescribeTopicPartitionsResponseV0 struct {
+type DescribeTopicPartitionsResponse struct {
 	Header ResponseHeader
 	Body   DescribeTopicPartitionsResponseV0ResponseBody
 }
@@ -15,7 +13,37 @@ type DescribeTopicPartitionsResponseV0 struct {
 type DescribeTopicPartitionsResponseV0ResponseBody struct {
 	ThrottleTime int32
 	Topics       []DescribeTopicPartitionsResponseV0Topic
-	NextCursor   *int8
+	Cursor       Cursor
+}
+
+func (d *DescribeTopicPartitionsResponseV0ResponseBody) Encode(enc *encoder.BinaryEncoder) error {
+	enc.PutInt32(d.ThrottleTime)
+	enc.PutCompactArrayLen(len(d.Topics))
+	for _, topic := range d.Topics {
+		err := topic.Encode(enc)
+		if err != nil {
+			return err
+		}
+	}
+	err := d.Cursor.Encode(enc)
+	if err != nil {
+		return err
+	}
+	enc.PutEmptyTaggedFieldArray()
+	return nil
+}
+
+type Cursor struct {
+	NextCursor *int8
+}
+
+func (c *Cursor) Encode(enc *encoder.BinaryEncoder) error {
+	if c.NextCursor != nil {
+		enc.PutInt8(*c.NextCursor)
+	} else {
+		enc.PutInt8(-1)
+	}
+	return nil
 }
 
 type DescribeTopicPartitionsResponseV0Topic struct {
@@ -27,95 +55,29 @@ type DescribeTopicPartitionsResponseV0Topic struct {
 	AuthorizedOperations int32
 }
 
-func (d DescribeTopicPartitionsResponseV0) Bytes() ([]byte, error) {
-	buf := &bytes.Buffer{}
-
-	// prepare the response header v1
-	err := binary.Write(buf, binary.BigEndian, d.Header.CorrelationId)
+func (d *DescribeTopicPartitionsResponseV0Topic) Encode(enc *encoder.BinaryEncoder) error {
+	enc.PutInt16(d.ErrorCode)
+	enc.PutCompactString(d.Name)
+	uuidBytes, err := d.ID.MarshalBinary()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	err = buf.WriteByte(0) // tag buffer
+	enc.PutRawBytes(uuidBytes)
+	enc.PutInt8(int8(d.IsInternal))
+	enc.PutCompactArrayLen(len(d.Partitions))
+	enc.PutInt32(d.AuthorizedOperations)
+	enc.PutEmptyTaggedFieldArray()
+	return nil
+}
+
+func (d *DescribeTopicPartitionsResponse) Encode(enc *encoder.BinaryEncoder) error {
+	err := d.Header.EncodeV1(enc)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	// prepare the response body
-	err = binary.Write(buf, binary.BigEndian, d.Body.ThrottleTime)
+	err = d.Body.Encode(enc)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	err = buf.WriteByte(byte(len(d.Body.Topics) + 1))
-	if err != nil {
-		return nil, err
-	}
-	for _, topic := range d.Body.Topics {
-		err = binary.Write(buf, binary.BigEndian, topic.ErrorCode)
-		if err != nil {
-			return nil, err
-		}
-
-		err = binary.Write(buf, binary.BigEndian, int8(len(topic.Name)+1))
-		if err != nil {
-			return nil, err
-		}
-
-		_, err = buf.WriteString(topic.Name)
-		if err != nil {
-			return nil, err
-		}
-
-		uuidBytes, _ := topic.ID.MarshalBinary()
-		_, err = buf.Write(uuidBytes)
-		if err != nil {
-			return nil, err
-		}
-
-		err = buf.WriteByte(topic.IsInternal)
-		if err != nil {
-			return nil, err
-		}
-
-		err = binary.Write(buf, binary.BigEndian, int8(len(topic.Partitions)+1))
-		if err != nil {
-			return nil, err
-		}
-
-		err = binary.Write(buf, binary.BigEndian, topic.AuthorizedOperations)
-		if err != nil {
-			return nil, err
-		}
-
-		// tag buffer
-		err = buf.WriteByte(0)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if d.Body.NextCursor != nil {
-		err = buf.WriteByte(byte(*d.Body.NextCursor))
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		err = buf.WriteByte(NilByte)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// tag buffer
-	err = buf.WriteByte(0)
-	if err != nil {
-		return nil, err
-	}
-
-	bodyBytes := buf.Bytes()
-	messageSize := len(bodyBytes)
-	out := make([]byte, 4+messageSize)
-	binary.BigEndian.PutUint32(out[0:4], uint32(messageSize))
-	copy(out[4:], bodyBytes)
-
-	return out, nil
+	return nil
 }

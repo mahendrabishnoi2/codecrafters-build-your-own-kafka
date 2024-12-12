@@ -8,6 +8,7 @@ import (
 
 	"github.com/codecrafters-io/kafka-starter-go/api"
 	"github.com/codecrafters-io/kafka-starter-go/protocol/decoder"
+	"github.com/codecrafters-io/kafka-starter-go/protocol/encoder"
 	"github.com/google/uuid"
 )
 
@@ -192,22 +193,25 @@ func handleRequest(conn net.Conn) {
 			os.Exit(1)
 		}
 
-		type bytess interface {
-			Bytes() ([]byte, error)
-		}
-
-		var resp bytess
+		respBytes := make([]byte, 8192)
 		switch msg.Header.ApiKey {
 		case api.ApiVersions:
-			resp = prepareApiVersionsResponse(msg)
+			resp := prepareApiVersionsResponse(msg)
+			respBytes, err = resp.Bytes()
+			if err != nil {
+				log.Println("Error preparing response: ", err.Error())
+				os.Exit(1)
+			}
 		case api.DescribeTopicPartitions:
-			resp = prepareDescribeTopicPartitionsResponse(msg)
-		}
-
-		respBytes, err := resp.Bytes()
-		if err != nil {
-			log.Println("Error preparing response: ", err.Error())
-			os.Exit(1)
+			enc := &encoder.BinaryEncoder{}
+			enc.Init(respBytes)
+			resp := prepareDescribeTopicPartitionsResponse(msg)
+			err = resp.Encode(enc)
+			if err != nil {
+				log.Println("Error encoding response: ", err.Error())
+				os.Exit(1)
+			}
+			respBytes = enc.ToKafkaResponse()
 		}
 
 		err = Send(conn, respBytes)
@@ -218,16 +222,16 @@ func handleRequest(conn net.Conn) {
 	}
 }
 
-func prepareDescribeTopicPartitionsResponse(msg *Message) api.DescribeTopicPartitionsResponseV0 {
+func prepareDescribeTopicPartitionsResponse(msg *Message) api.DescribeTopicPartitionsResponse {
 	requestBody := msg.RequestBody.(api.DescribeTopicPartitionsRequestBody)
-	resp := api.DescribeTopicPartitionsResponseV0{
+	resp := api.DescribeTopicPartitionsResponse{
 		Header: api.ResponseHeader{
 			CorrelationId: msg.Header.CorrelationId,
 		},
 		Body: api.DescribeTopicPartitionsResponseV0ResponseBody{
 			ThrottleTime: 0,
 			Topics:       nil,
-			NextCursor:   nil,
+			Cursor:       api.Cursor{NextCursor: nil},
 		},
 	}
 
