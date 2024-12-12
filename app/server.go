@@ -2,9 +2,7 @@ package main
 
 import (
 	"encoding/binary"
-	"encoding/hex"
-	"encoding/json"
-	"fmt"
+	"log"
 	"net"
 	"os"
 
@@ -127,7 +125,6 @@ type ApiVersionsResponseV4ResponseBody struct {
 
 func Read(conn net.Conn) (*Message, error) {
 	msg := Message{}
-	var readBytes int32
 
 	messageSizeBytes := make([]byte, 4)
 	_, err := conn.Read(messageSizeBytes)
@@ -141,13 +138,9 @@ func Read(conn net.Conn) (*Message, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("bodyBytes", bodyBytes)
-	fmt.Println(hex.Dump(bodyBytes))
 
 	var req api.RawRequest
 	req = req.From(messageSizeBytes, bodyBytes)
-
-	fmt.Println("req", req)
 
 	dec := &decoder.BinaryDecoder{}
 	dec.Init(req.Payload)
@@ -159,18 +152,10 @@ func Read(conn net.Conn) (*Message, error) {
 		return nil, err
 	}
 
-	fmt.Println("reqHeader", reqHeader)
-
 	msg.MessageSize = messageSize
 	msg.Header = reqHeader
 	if msg.Header.ApiVersion < 0 || msg.Header.ApiVersion > 4 {
 		msg.Error = ErrorUnsupportedVersion
-	}
-
-	remainingBody := make([]byte, msg.MessageSize-readBytes)
-	_, err = conn.Read(remainingBody)
-	if err != nil {
-		return nil, err
 	}
 
 	// Parse the request body
@@ -196,17 +181,16 @@ func handleRequest(conn net.Conn) {
 	defer func(conn net.Conn) {
 		err := conn.Close()
 		if err != nil {
-			fmt.Println("Error closing connection: ", err.Error())
+			log.Println("Error closing connection: ", err.Error())
 		}
 	}(conn)
 
 	for {
 		msg, err := Read(conn)
 		if err != nil {
-			fmt.Println("Error reading data: ", err.Error())
+			log.Println("Error reading data: ", err.Error())
 			os.Exit(1)
 		}
-		fmt.Printf("Received message: %+v\n", msg)
 
 		type bytess interface {
 			Bytes() ([]byte, error)
@@ -222,13 +206,13 @@ func handleRequest(conn net.Conn) {
 
 		respBytes, err := resp.Bytes()
 		if err != nil {
-			fmt.Println("Error preparing response: ", err.Error())
+			log.Println("Error preparing response: ", err.Error())
 			os.Exit(1)
 		}
 
 		err = Send(conn, respBytes)
 		if err != nil {
-			fmt.Println("Error writing data: ", err.Error())
+			log.Println("Error writing data: ", err.Error())
 			os.Exit(1)
 		}
 	}
@@ -279,35 +263,35 @@ func prepareApiVersionsResponse(msg *Message) ApiVersionsResponseV4 {
 }
 
 func main() {
-	fmt.Println("Logs from your program will appear here!")
+	log.Println("Logs from your program will appear here!")
 
 	l, err := net.Listen("tcp", "0.0.0.0:9092")
 	if err != nil {
-		fmt.Println("Failed to bind to port 9092")
+		log.Println("Failed to bind to port 9092")
 		os.Exit(1)
 	}
 	defer func(l net.Listener) {
 		err := l.Close()
 		if err != nil {
-			fmt.Println("Error closing listener: ", err.Error())
+			log.Println("Error closing listener: ", err.Error())
 		}
 	}(l)
 
 	for {
 		conn, err := l.Accept()
 		if err != nil {
-			fmt.Println("Error accepting connection: ", err.Error())
+			log.Println("Error accepting connection: ", err.Error())
 			os.Exit(1)
 		}
 		go handleRequest(conn)
 	}
 }
 
-func Ptr[T any](val T) *T {
-	return &val
-}
+// func Ptr[T any](val T) *T {
+// 	return &val
+// }
 
-func prettyPrint(identifier string, data any) {
-	b, _ := json.MarshalIndent(data, "", "\t")
-	fmt.Println(identifier, string(b))
-}
+// func prettyPrint(identifier string, data any) {
+// 	b, _ := json.MarshalIndent(data, "", "\t")
+// 	fmt.Println(identifier, string(b))
+// }

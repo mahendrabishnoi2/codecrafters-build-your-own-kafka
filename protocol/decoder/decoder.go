@@ -2,7 +2,6 @@ package decoder
 
 import (
 	"encoding/binary"
-	"fmt"
 )
 
 type BinaryDecoder struct {
@@ -48,7 +47,6 @@ func (d *BinaryDecoder) GetString() string {
 
 func (d *BinaryDecoder) GetEmptyTaggedFieldArray() any {
 	tagsLength := d.GetInt8()
-	d.offset++
 	if tagsLength != 0 {
 		panic("expected empty tagged field array")
 	}
@@ -56,7 +54,6 @@ func (d *BinaryDecoder) GetEmptyTaggedFieldArray() any {
 }
 
 func (d *BinaryDecoder) GetUnsignedVarint() uint64 {
-	fmt.Println("Running binary.Uvarint on", d.raw[d.offset:])
 	value, n := binary.Uvarint(d.raw[d.offset:])
 	d.offset += n
 	return value

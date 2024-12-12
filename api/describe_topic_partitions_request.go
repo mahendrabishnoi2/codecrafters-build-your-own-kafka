@@ -1,8 +1,6 @@
 package api
 
 import (
-	"fmt"
-
 	"github.com/codecrafters-io/kafka-starter-go/protocol/decoder"
 )
 
@@ -24,20 +22,17 @@ type DescribeTopicPartitionsRequestBody struct {
 
 func (d *DescribeTopicPartitionsRequestBody) DecodeV0(dec *decoder.BinaryDecoder) error {
 	topicNamesLength := dec.GetCompactArrayLen()
-	fmt.Println("topicNamesLength", topicNamesLength)
 	d.TopicNames = make([]TopicName, topicNamesLength)
 	for i := 0; i < topicNamesLength; i++ {
 		topicName := TopicName{}
 		_ = topicName.Decode(dec)
 		d.TopicNames[i] = topicName
 	}
-	fmt.Println("d.TopicNames", d.TopicNames)
 	d.ResponsePartitionLimit = dec.GetInt32()
-	fmt.Println("d.ResponsePartitionLimit", d.ResponsePartitionLimit)
 	cursor := dec.GetInt8()
 	if cursor != -1 {
 		d.Cursor = &cursor
 	}
-	fmt.Println("d.Cursor", d.Cursor)
+	dec.GetEmptyTaggedFieldArray()
 	return nil
 }
