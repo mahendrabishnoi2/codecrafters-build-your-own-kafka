@@ -159,6 +159,9 @@ func handleRequest(conn net.Conn) {
 
 	for {
 		msg, err := Read(conn)
+		if err != nil && err.Error() == "EOF" {
+			break
+		}
 		if err != nil {
 			log.Println("Error reading data: ", err.Error())
 			os.Exit(1)
