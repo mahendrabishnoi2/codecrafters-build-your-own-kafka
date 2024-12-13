@@ -4,16 +4,6 @@ import (
 	"github.com/codecrafters-io/kafka-starter-go/protocol/decoder"
 )
 
-type TopicName struct {
-	Name string
-}
-
-func (t *TopicName) Decode(dec *decoder.BinaryDecoder) error {
-	t.Name = dec.GetCompactString()
-	dec.GetEmptyTaggedFieldArray()
-	return nil
-}
-
 type DescribeTopicPartitionsRequestBody struct {
 	TopicNames             []TopicName
 	ResponsePartitionLimit int32
@@ -33,6 +23,16 @@ func (d *DescribeTopicPartitionsRequestBody) DecodeV0(dec *decoder.BinaryDecoder
 	if cursor != -1 {
 		d.Cursor = &cursor
 	}
+	dec.GetEmptyTaggedFieldArray()
+	return nil
+}
+
+type TopicName struct {
+	Name string
+}
+
+func (t *TopicName) Decode(dec *decoder.BinaryDecoder) error {
+	t.Name = dec.GetCompactString()
 	dec.GetEmptyTaggedFieldArray()
 	return nil
 }

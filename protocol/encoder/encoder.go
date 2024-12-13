@@ -34,6 +34,11 @@ func (e *BinaryEncoder) PutInt32(value int32) {
 	e.offset += 4
 }
 
+func (e *BinaryEncoder) PutInt64(value int64) {
+	binary.BigEndian.PutUint64(e.raw[e.offset:], uint64(value))
+	e.offset += 8
+}
+
 func (e *BinaryEncoder) PutUvarint(value int64) {
 	e.offset += binary.PutUvarint(e.raw[e.offset:], uint64(value))
 }
@@ -68,4 +73,8 @@ func (e *BinaryEncoder) PutCompactInt32Array(value []int32) {
 	for _, v := range value {
 		e.PutInt32(v)
 	}
+}
+
+func (e *BinaryEncoder) Offset() int {
+	return e.offset
 }

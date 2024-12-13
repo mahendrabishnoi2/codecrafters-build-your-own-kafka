@@ -8,6 +8,7 @@ import (
 type ApiKey = int16
 
 const (
+	Fetch                   ApiKey = 1
 	ApiVersions             ApiKey = 18
 	DescribeTopicPartitions ApiKey = 75
 )
@@ -30,6 +31,11 @@ func (r *RequestHeader) DecodeV2(dec *decoder.BinaryDecoder) error {
 
 type ResponseHeader struct {
 	CorrelationId int32
+}
+
+func (r *ResponseHeader) EncodeV0(enc *encoder.BinaryEncoder) error {
+	enc.PutInt32(r.CorrelationId)
+	return nil
 }
 
 func (r *ResponseHeader) EncodeV1(enc *encoder.BinaryEncoder) error {

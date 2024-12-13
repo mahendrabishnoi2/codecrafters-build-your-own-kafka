@@ -5,13 +5,14 @@ import (
 	"os"
 
 	"github.com/codecrafters-io/kafka-starter-go/protocol/decoder"
+	"github.com/codecrafters-io/kafka-starter-go/protocol/encoder"
 )
 
 const clusterMetadataLogFilePath = "/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log"
 
 type RecordBatch struct {
 	BaseOffset           int64
-	Length               int32
+	BatchLength          int32
 	PartitionLeaderEpoch int32
 	Magic                int8
 	CRC                  int32
@@ -27,7 +28,7 @@ type RecordBatch struct {
 
 func (r *RecordBatch) Decode(dec *decoder.BinaryDecoder) error {
 	r.BaseOffset = dec.GetInt64()
-	r.Length = dec.GetInt32()
+	r.BatchLength = dec.GetInt32()
 	r.PartitionLeaderEpoch = dec.GetInt32()
 	r.Magic = dec.GetInt8()
 	r.CRC = dec.GetInt32()
@@ -46,6 +47,28 @@ func (r *RecordBatch) Decode(dec *decoder.BinaryDecoder) error {
 			return err
 		}
 		r.Records[i] = record
+	}
+	return nil
+}
+
+func (r *RecordBatch) Encode(enc *encoder.BinaryEncoder) error {
+	enc.PutInt64(r.BaseOffset)
+	enc.PutInt32(r.BatchLength)
+	enc.PutInt32(r.PartitionLeaderEpoch)
+	enc.PutInt8(r.Magic)
+	enc.PutInt32(r.CRC)
+	enc.PutInt16(r.Attributes)
+	enc.PutInt32(r.LastOffsetDelta)
+	enc.PutInt64(r.FirstTimestamp)
+	enc.PutInt64(r.MaxTimestamp)
+	enc.PutInt64(r.ProducerId)
+	enc.PutInt16(r.ProducerEpoch)
+	enc.PutInt32(r.BaseSequence)
+	enc.PutCompactArrayLen(len(r.Records))
+	for _, record := range r.Records {
+		if err := record.Encode(enc); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -87,11 +110,41 @@ func (r *Record) Decode(dec *decoder.BinaryDecoder) error {
 	return nil
 }
 
+func (r *Record) Encode(enc *encoder.BinaryEncoder) error {
+	enc.PutUvarint(r.Length)
+	enc.PutInt8(r.Attributes)
+	enc.PutUvarint(r.TimestampDelta)
+	enc.PutUvarint(r.OffsetDelta)
+	if len(r.Key) != 0 {
+		enc.PutUvarint(r.KeyLength)
+		enc.PutRawBytes(r.Key)
+	} else {
+		enc.PutUvarint(-1)
+	}
+	if len(r.Value) != 0 {
+		enc.PutUvarint(r.ValueLength)
+		enc.PutRawBytes(r.Value)
+	} else {
+		enc.PutUvarint(-1)
+	}
+	enc.PutCompactArrayLen(len(r.Headers))
+	for _, recordHeader := range r.Headers {
+		if err := recordHeader.Encode(enc); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type RecordHeader struct {
 	// for now keep it empty since it's not defined at https://binspec.org/kafka-cluster-metadata?highlight=90-90
 }
 
 func (r *RecordHeader) Decode(dec *decoder.BinaryDecoder) error {
+	return nil
+}
+
+func (r *RecordHeader) Encode(enc *encoder.BinaryEncoder) error {
 	return nil
 }
 

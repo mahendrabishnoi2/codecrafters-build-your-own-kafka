@@ -5,8 +5,8 @@ type RawRequest struct {
 	Payload  []byte
 }
 
-func (r *RawRequest) From(messageSizeBytes, bodyBytes []byte) RawRequest {
+func (r *RawRequest) From(messageSizeBytes, bodyBytes []byte) *RawRequest {
 	r.RawBytes = append(messageSizeBytes, bodyBytes...)
 	r.Payload = bodyBytes
-	return *r
+	return r
 }
