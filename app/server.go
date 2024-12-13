@@ -12,17 +12,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const (
-	RequestHeaderVersion0 int8 = 0
-	RequestHeaderVersion1 int8 = 1
-	RequestHeaderVersion2 int8 = 2
-)
-
-const (
-	ResponseHeaderVersion0 int8 = 0
-	ResponseHeaderVersion1 int8 = 1
-)
-
 type ErrorCode = int16
 
 const (
@@ -98,24 +87,6 @@ func (a ApiVersionsResponseV4) Bytes() ([]byte, error) {
 	out[size-1] = 0
 
 	return out, nil
-}
-
-func getRequestHeaderFromApiKey(apiKey api.ApiKey) int8 {
-	switch apiKey {
-	case api.ApiVersions:
-		return RequestHeaderVersion1
-	default:
-		return RequestHeaderVersion2
-	}
-}
-
-func getResponseHeaderFromApiKey(apiKey api.ApiKey) int8 {
-	switch apiKey {
-	case api.ApiVersions:
-		return ResponseHeaderVersion0
-	default:
-		return ResponseHeaderVersion1
-	}
 }
 
 type ApiVersionsResponseV4ResponseBody struct {
@@ -222,8 +193,44 @@ func handleRequest(conn net.Conn) {
 	}
 }
 
+func getTopicFromMetadata(metadata []api.RecordBatch, topicName string) *api.TopicRecord {
+	for _, recordBatch := range metadata {
+		for _, record := range recordBatch.Records {
+			recordValue := api.ClusterMetadataRecordValue{}
+			_ = recordValue.DecodeBytes(record.Value)
+			switch recordValue.Type {
+			case 2:
+				topicRecord := recordValue.Data.(*api.TopicRecord)
+				if topicRecord.TopicName == topicName {
+					return topicRecord
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func getPartitionsFromMetadata(metadata []api.RecordBatch, topicId uuid.UUID) []*api.PartitionRecord {
+	var partitions []*api.PartitionRecord
+	for _, recordBatch := range metadata {
+		for _, record := range recordBatch.Records {
+			recordValue := api.ClusterMetadataRecordValue{}
+			_ = recordValue.DecodeBytes(record.Value)
+			switch recordValue.Type {
+			case 3:
+				partitionRecord := recordValue.Data.(*api.PartitionRecord)
+				if partitionRecord.TopicUUID == topicId {
+					partitions = append(partitions, partitionRecord)
+				}
+			}
+		}
+	}
+	return partitions
+}
+
 func prepareDescribeTopicPartitionsResponse(msg *Message) api.DescribeTopicPartitionsResponse {
-	requestBody := msg.RequestBody.(api.DescribeTopicPartitionsRequestBody)
+	topicMetadata := api.GetTopicMetadata()
+	req := msg.RequestBody.(api.DescribeTopicPartitionsRequestBody)
 	resp := api.DescribeTopicPartitionsResponse{
 		Header: api.ResponseHeader{
 			CorrelationId: msg.Header.CorrelationId,
@@ -234,16 +241,42 @@ func prepareDescribeTopicPartitionsResponse(msg *Message) api.DescribeTopicParti
 			Cursor:       api.Cursor{NextCursor: nil},
 		},
 	}
-
-	resp.Body.Topics = []api.DescribeTopicPartitionsResponseV0Topic{
-		{
-			ErrorCode:            UnknownTopicOrPartition,
-			Name:                 requestBody.TopicNames[0].Name,
-			ID:                   uuid.UUID{},
+	for _, topic := range req.TopicNames {
+		topicRecord := getTopicFromMetadata(topicMetadata, topic.Name)
+		if topicRecord == nil {
+			resp.Body.Topics = append(resp.Body.Topics, api.DescribeTopicPartitionsResponseV0Topic{
+				ErrorCode:            UnknownTopicOrPartition,
+				Name:                 topic.Name,
+				ID:                   uuid.UUID{},
+				IsInternal:           0,
+				Partitions:           nil,
+				AuthorizedOperations: 3576, // hardcoded for stage vt6
+			})
+			continue
+		}
+		partitionRecords := getPartitionsFromMetadata(topicMetadata, topicRecord.TopicUUID)
+		partitions := make([]api.Partition, 0, len(partitionRecords))
+		for _, partition := range partitionRecords {
+			partitions = append(partitions, api.Partition{
+				ErrorCode:       NoError,
+				PartitionIndex:  partition.PartitionID,
+				LeaderID:        partition.Leader,
+				LeaderEpoch:     partition.LeaderEpoch,
+				ReplicaNodes:    partition.Replicas,
+				ISRNodes:        partition.InSyncReplicas,
+				ELRs:            nil,
+				LastKnownELRs:   nil,
+				OffLineReplicas: nil,
+			})
+		}
+		resp.Body.Topics = append(resp.Body.Topics, api.DescribeTopicPartitionsResponseV0Topic{
+			ErrorCode:            NoError,
+			Name:                 topicRecord.TopicName,
+			ID:                   topicRecord.TopicUUID,
 			IsInternal:           0,
-			Partitions:           nil,
-			AuthorizedOperations: 3576, // hardcoded for stage vt6
-		},
+			Partitions:           partitions,
+			AuthorizedOperations: 3576,
+		})
 	}
 	return resp
 }

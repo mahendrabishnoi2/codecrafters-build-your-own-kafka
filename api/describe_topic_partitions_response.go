@@ -51,8 +51,20 @@ type DescribeTopicPartitionsResponseV0Topic struct {
 	Name                 string
 	ID                   uuid.UUID
 	IsInternal           byte
-	Partitions           []any
+	Partitions           []Partition
 	AuthorizedOperations int32
+}
+
+type Partition struct {
+	ErrorCode       int16
+	PartitionIndex  int32
+	LeaderID        int32
+	LeaderEpoch     int32
+	ReplicaNodes    []int32
+	ISRNodes        []int32
+	ELRs            []int32 // eligible leader replicas
+	LastKnownELRs   []int32
+	OffLineReplicas []int32
 }
 
 func (d *DescribeTopicPartitionsResponseV0Topic) Encode(enc *encoder.BinaryEncoder) error {
@@ -65,7 +77,26 @@ func (d *DescribeTopicPartitionsResponseV0Topic) Encode(enc *encoder.BinaryEncod
 	enc.PutRawBytes(uuidBytes)
 	enc.PutInt8(int8(d.IsInternal))
 	enc.PutCompactArrayLen(len(d.Partitions))
+	for _, partition := range d.Partitions {
+		if err = partition.Encode(enc); err != nil {
+			return err
+		}
+	}
 	enc.PutInt32(d.AuthorizedOperations)
+	enc.PutEmptyTaggedFieldArray()
+	return nil
+}
+
+func (p *Partition) Encode(enc *encoder.BinaryEncoder) error {
+	enc.PutInt16(p.ErrorCode)
+	enc.PutInt32(p.PartitionIndex)
+	enc.PutInt32(p.LeaderID)
+	enc.PutInt32(p.LeaderEpoch)
+	enc.PutCompactInt32Array(p.ReplicaNodes)
+	enc.PutCompactInt32Array(p.ISRNodes)
+	enc.PutCompactInt32Array(p.ELRs)
+	enc.PutCompactInt32Array(p.LastKnownELRs)
+	enc.PutCompactInt32Array(p.OffLineReplicas)
 	enc.PutEmptyTaggedFieldArray()
 	return nil
 }

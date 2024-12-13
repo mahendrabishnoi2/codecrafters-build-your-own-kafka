@@ -2,6 +2,8 @@ package decoder
 
 import (
 	"encoding/binary"
+
+	"github.com/google/uuid"
 )
 
 type BinaryDecoder struct {
@@ -29,6 +31,12 @@ func (d *BinaryDecoder) GetInt16() int16 {
 func (d *BinaryDecoder) GetInt32() int32 {
 	value := int32(binary.BigEndian.Uint32(d.raw[d.offset:]))
 	d.offset += 4
+	return value
+}
+
+func (d *BinaryDecoder) GetInt64() int64 {
+	value := int64(binary.BigEndian.Uint64(d.raw[d.offset:]))
+	d.offset += 8
 	return value
 }
 
@@ -69,4 +77,38 @@ func (d *BinaryDecoder) GetCompactString() string {
 	value := string(d.raw[d.offset : d.offset+int(length)])
 	d.offset += int(length)
 	return value
+}
+
+func (d *BinaryDecoder) GetSignedVarint() int64 {
+	value, n := binary.Varint(d.raw[d.offset:])
+	d.offset += n
+	return value
+}
+
+func (d *BinaryDecoder) GetBytes(length int) []byte {
+	value := d.raw[d.offset : d.offset+length]
+	d.offset += length
+	return value
+}
+
+func (d *BinaryDecoder) GetUUID() uuid.UUID {
+	val, err := uuid.FromBytes(d.raw[d.offset : d.offset+16])
+	if err != nil {
+		panic(err)
+	}
+	d.offset += 16
+	return val
+}
+
+func (d *BinaryDecoder) GetCompactInt32Array() []int32 {
+	arrayLength := d.GetCompactArrayLen()
+	array := make([]int32, arrayLength)
+	for i := 0; i < arrayLength; i++ {
+		array[i] = d.GetInt32()
+	}
+	return array
+}
+
+func (d *BinaryDecoder) Remaining() int {
+	return len(d.raw) - d.offset
 }

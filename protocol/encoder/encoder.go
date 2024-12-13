@@ -62,3 +62,10 @@ func (e *BinaryEncoder) ToKafkaResponse() []byte {
 	copy(res[4:], e.raw[:e.offset])
 	return res
 }
+
+func (e *BinaryEncoder) PutCompactInt32Array(value []int32) {
+	e.PutCompactArrayLen(len(value))
+	for _, v := range value {
+		e.PutInt32(v)
+	}
+}
