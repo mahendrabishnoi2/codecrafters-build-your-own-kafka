@@ -4,43 +4,8 @@ import (
 	"github.com/google/uuid"
 )
 
-func getTopicFromMetadata(metadata []RecordBatch, topicName string) *TopicRecord {
-	for _, recordBatch := range metadata {
-		for _, record := range recordBatch.Records {
-			recordValue := ClusterMetadataRecordValue{}
-			_ = recordValue.DecodeBytes(record.Value)
-			switch recordValue.Type {
-			case 2:
-				topicRecord := recordValue.Data.(*TopicRecord)
-				if topicRecord.TopicName == topicName {
-					return topicRecord
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func getPartitionsFromMetadata(metadata []RecordBatch, topicId uuid.UUID) []*PartitionRecord {
-	var partitions []*PartitionRecord
-	for _, recordBatch := range metadata {
-		for _, record := range recordBatch.Records {
-			recordValue := ClusterMetadataRecordValue{}
-			_ = recordValue.DecodeBytes(record.Value)
-			switch recordValue.Type {
-			case 3:
-				partitionRecord := recordValue.Data.(*PartitionRecord)
-				if partitionRecord.TopicUUID == topicId {
-					partitions = append(partitions, partitionRecord)
-				}
-			}
-		}
-	}
-	return partitions
-}
-
 func PrepareDescribeTopicPartitionsResponse(msg *Message) DescribeTopicPartitionsResponse {
-	topicMetadata := GetTopicMetadata()
+	clusterMetadata := GetClusterMetadata("__cluster_metadata", 0)
 	req := msg.RequestBody.(DescribeTopicPartitionsRequestBody)
 	resp := DescribeTopicPartitionsResponse{
 		Header: ResponseHeader{
@@ -53,7 +18,7 @@ func PrepareDescribeTopicPartitionsResponse(msg *Message) DescribeTopicPartition
 		},
 	}
 	for _, topic := range req.TopicNames {
-		topicRecord := getTopicFromMetadata(topicMetadata, topic.Name)
+		topicRecord := clusterMetadata.GetTopicByName(topic.Name)
 		if topicRecord == nil {
 			resp.Body.Topics = append(resp.Body.Topics, DescribeTopicPartitionsResponseV0Topic{
 				ErrorCode:            UnknownTopicOrPartition,
@@ -65,7 +30,7 @@ func PrepareDescribeTopicPartitionsResponse(msg *Message) DescribeTopicPartition
 			})
 			continue
 		}
-		partitionRecords := getPartitionsFromMetadata(topicMetadata, topicRecord.TopicUUID)
+		partitionRecords := clusterMetadata.GetPartitionByTopicId(topicRecord.TopicUUID)
 		partitions := make([]Partition, 0, len(partitionRecords))
 		for _, partition := range partitionRecords {
 			partitions = append(partitions, Partition{

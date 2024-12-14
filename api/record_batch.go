@@ -1,14 +1,9 @@
 package api
 
 import (
-	"io"
-	"os"
-
 	"github.com/codecrafters-io/kafka-starter-go/protocol/decoder"
 	"github.com/codecrafters-io/kafka-starter-go/protocol/encoder"
 )
-
-const clusterMetadataLogFilePath = "/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log"
 
 type RecordBatch struct {
 	BaseOffset           int64
@@ -146,27 +141,4 @@ func (r *RecordHeader) Decode(dec *decoder.BinaryDecoder) error {
 
 func (r *RecordHeader) Encode(enc *encoder.BinaryEncoder) error {
 	return nil
-}
-
-func GetTopicMetadata() []RecordBatch {
-	var res []RecordBatch
-	file, err := os.Open(clusterMetadataLogFilePath)
-	if err != nil {
-		return res
-	}
-	bytes, err := io.ReadAll(file)
-	if err != nil {
-		return res
-	}
-	dec := &decoder.BinaryDecoder{}
-	dec.Init(bytes)
-	for dec.Remaining() > 0 {
-		recordBatch := RecordBatch{}
-		if err := recordBatch.Decode(dec); err != nil {
-			return res
-		}
-		res = append(res, recordBatch)
-	}
-
-	return res
 }
