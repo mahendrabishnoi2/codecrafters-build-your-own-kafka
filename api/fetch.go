@@ -26,11 +26,10 @@ func PrepareFetchResponse(msg *Message) FetchResponse {
 				Records:             nil,
 			})
 		} else {
-			partitionRecs := clusterMetadata.GetPartitionByTopicId(topic.TopicID)
-			for _, partitionRec := range partitionRecs {
-				partitionMetadata := GetClusterMetadata(topicRec.TopicName, partitionRec.PartitionID)
+			for _, partition := range topic.Partitions {
+				partitionMetadata := GetClusterMetadata(topicRec.TopicName, partition.PartitionIndex)
 				partitionResponses = append(partitionResponses, FetchResponsePartition{
-					PartitionIndex:       partitionRec.PartitionID,
+					PartitionIndex:       partition.PartitionIndex,
 					ErrorCode:            0,
 					HighWatermark:        0,
 					LastStableOffset:     0,

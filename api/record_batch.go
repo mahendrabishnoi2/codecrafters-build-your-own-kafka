@@ -1,6 +1,8 @@
 package api
 
 import (
+	"hash/crc32"
+
 	"github.com/codecrafters-io/kafka-starter-go/protocol/decoder"
 	"github.com/codecrafters-io/kafka-starter-go/protocol/encoder"
 )
@@ -47,11 +49,16 @@ func (r *RecordBatch) Decode(dec *decoder.BinaryDecoder) error {
 }
 
 func (r *RecordBatch) Encode(enc *encoder.BinaryEncoder) error {
+	startOffset := enc.Offset()
+
 	enc.PutInt64(r.BaseOffset)
-	enc.PutInt32(r.BatchLength)
+	batchLengthStartOffset := enc.Offset()
+	enc.PutInt32(0) // placeholder
 	enc.PutInt32(r.PartitionLeaderEpoch)
 	enc.PutInt8(r.Magic)
-	enc.PutInt32(r.CRC)
+	crcStartOffset := enc.Offset()
+	enc.PutInt32(0) // placeholder
+	crcEndOffset := enc.Offset()
 	enc.PutInt16(r.Attributes)
 	enc.PutInt32(r.LastOffsetDelta)
 	enc.PutInt64(r.FirstTimestamp)
@@ -59,12 +66,21 @@ func (r *RecordBatch) Encode(enc *encoder.BinaryEncoder) error {
 	enc.PutInt64(r.ProducerId)
 	enc.PutInt16(r.ProducerEpoch)
 	enc.PutInt32(r.BaseSequence)
-	enc.PutCompactArrayLen(len(r.Records))
-	for _, record := range r.Records {
+	enc.PutInt32(int32(len(r.Records)))
+	for i, record := range r.Records {
+		record.OffsetDelta = int64(i)
 		if err := record.Encode(enc); err != nil {
 			return err
 		}
 	}
+
+	batchLength := enc.Offset() - 12 - startOffset // 8 bytes for BaseOffset and 4 bytes for BatchLength
+	enc.PutInt32At(int32(batchLength), batchLengthStartOffset)
+
+	// Calculate CRC
+	crcData := enc.Bytes()[crcEndOffset:enc.Offset()]
+	crcCheckSum := crc32.Checksum(crcData, crc32.MakeTable(crc32.Castagnoli))
+	enc.PutInt32At(int32(crcCheckSum), crcStartOffset)
 	return nil
 }
 
@@ -75,7 +91,7 @@ type Record struct {
 	OffsetDelta    int64  // signed varint
 	KeyLength      int64  // signed varint (-1 if null)
 	Key            []byte // nullable
-	ValueLength    int64  // signed varint (-1 if null)
+	ValueLength    int64  // signed varint
 	Value          []byte // nullable
 	Headers        []RecordHeader
 }
@@ -106,29 +122,50 @@ func (r *Record) Decode(dec *decoder.BinaryDecoder) error {
 }
 
 func (r *Record) Encode(enc *encoder.BinaryEncoder) error {
-	enc.PutUvarint(r.Length)
+	enc.PutUvarint(r.Length) // placeholder length
 	enc.PutInt8(r.Attributes)
 	enc.PutUvarint(r.TimestampDelta)
 	enc.PutUvarint(r.OffsetDelta)
 	if len(r.Key) != 0 {
-		enc.PutUvarint(r.KeyLength)
+		enc.PutCompactArrayLen(int(r.KeyLength))
 		enc.PutRawBytes(r.Key)
 	} else {
-		enc.PutUvarint(-1)
+		enc.PutCompactArrayLen(0)
 	}
-	if len(r.Value) != 0 {
-		enc.PutUvarint(r.ValueLength)
-		enc.PutRawBytes(r.Value)
-	} else {
-		enc.PutUvarint(-1)
-	}
-	enc.PutCompactArrayLen(len(r.Headers))
+	cmrv := ClusterMetadataRecordValue{}
+	_ = cmrv.DecodeBytes(r.Value)
+	enc.PutVarint(r.ValueLength)
+	enc.PutRawBytes(r.Value)
+	enc.PutVarint(int64(len(r.Headers)))
 	for _, recordHeader := range r.Headers {
 		if err := recordHeader.Encode(enc); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (r *Record) GetEncodedLength() int64 {
+	enc := encoder.BinaryEncoder{}
+	enc.Init(make([]byte, 1024))
+
+	enc.PutInt8(r.Attributes)
+	enc.PutUvarint(r.TimestampDelta)
+	enc.PutUvarint(r.OffsetDelta)
+	if len(r.Key) != 0 {
+		enc.PutCompactArrayLen(int(r.KeyLength))
+		enc.PutRawBytes(r.Key)
+	} else {
+		enc.PutCompactArrayLen(0)
+	}
+	enc.PutVarint(int64(len(r.Value)))
+	enc.PutRawBytes(r.Value)
+	enc.PutVarint(int64(len(r.Headers)))
+	for _, header := range r.Headers {
+		header.Encode(&enc)
+	}
+
+	return int64(enc.Offset())
 }
 
 type RecordHeader struct {

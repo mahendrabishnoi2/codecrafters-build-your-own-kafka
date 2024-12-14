@@ -34,6 +34,10 @@ func (e *BinaryEncoder) PutInt32(value int32) {
 	e.offset += 4
 }
 
+func (e *BinaryEncoder) PutInt32At(value int32, offset int) {
+	binary.BigEndian.PutUint32(e.raw[e.offset:], uint32(value))
+}
+
 func (e *BinaryEncoder) PutInt64(value int64) {
 	binary.BigEndian.PutUint64(e.raw[e.offset:], uint64(value))
 	e.offset += 8
@@ -41,6 +45,10 @@ func (e *BinaryEncoder) PutInt64(value int64) {
 
 func (e *BinaryEncoder) PutUvarint(value int64) {
 	e.offset += binary.PutUvarint(e.raw[e.offset:], uint64(value))
+}
+
+func (e *BinaryEncoder) PutVarint(value int64) {
+	e.offset += binary.PutVarint(e.raw[e.offset:], value)
 }
 
 func (e *BinaryEncoder) PutCompactArrayLen(len int) {
@@ -77,4 +85,8 @@ func (e *BinaryEncoder) PutCompactInt32Array(value []int32) {
 
 func (e *BinaryEncoder) Offset() int {
 	return e.offset
+}
+
+func (e *BinaryEncoder) Bytes() []byte {
+	return e.raw
 }
